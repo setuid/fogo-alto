@@ -1,0 +1,19 @@
+{
+  "rsvp": {
+    "title": "Are you in?",
+    "yes": "I'm in",
+    "no": "Can't make it",
+    "maybe": "Maybe",
+    "name": "Your name",
+    "email": "Email (optional)",
+    "drinks_alcohol": "I'll have a beer"
+  },
+  "contributions": {
+    "title": "Want to bring something?",
+    "what": "What you'll bring",
+    "quantity": "Quantity",
+    "submit": "Add",
+    "others": "Other guests will bring"
+  },
+  "saved": "You're in! The host has been notified."
+}

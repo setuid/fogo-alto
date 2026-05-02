@@ -1,0 +1,18 @@
+{
+  "categories": {
+    "meat": "Meats",
+    "drink_alcoholic": "Alcoholic drinks",
+    "drink_non_alcoholic": "Non-alcoholic drinks",
+    "wine": "Wines",
+    "side": "Sides",
+    "other": "Other"
+  },
+  "meat_categories": {
+    "bovina": "Beef",
+    "suina": "Pork",
+    "aves": "Poultry",
+    "embutidos": "Sausages",
+    "peixes": "Fish",
+    "vegetais": "Vegetables"
+  }
+}

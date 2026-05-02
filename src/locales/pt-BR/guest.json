@@ -1,0 +1,19 @@
+{
+  "rsvp": {
+    "title": "Você vem?",
+    "yes": "Confirmar",
+    "no": "Não vou",
+    "maybe": "Talvez",
+    "name": "Seu nome",
+    "email": "E-mail (opcional)",
+    "drinks_alcohol": "Vou tomar uma cerveja"
+  },
+  "contributions": {
+    "title": "Quer trazer alguma coisa?",
+    "what": "O que você traz",
+    "quantity": "Quantidade",
+    "submit": "Adicionar",
+    "others": "Outros convidados vão trazer"
+  },
+  "saved": "Confirmado! Já avisamos o anfitrião."
+}

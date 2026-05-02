@@ -1,0 +1,117 @@
+// Tipos do schema Supabase. Esqueleto inicial — substituir por geração via
+// `supabase gen types typescript` quando o projeto remoto existir.
+
+import type {
+  BarbecueStatus,
+  BarbecueStyle,
+  CookingTechnique,
+  Doneness,
+  ItemCategory,
+  RsvpStatus,
+} from './domain';
+
+export interface BarbecueRow {
+  id: string;
+  host_id: string;
+  share_token: string;
+  title: string;
+  description: string | null;
+  event_date: string;
+  location: string | null;
+  style: BarbecueStyle;
+  estimated_guests: number;
+  status: BarbecueStatus;
+  include_sides: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuestRow {
+  id: string;
+  barbecue_id: string;
+  name: string;
+  email: string | null;
+  rsvp_status: RsvpStatus;
+  drinks_alcohol: boolean;
+  guest_token: string;
+  created_at: string;
+}
+
+export interface ItemRow {
+  id: string;
+  barbecue_id: string;
+  category: ItemCategory;
+  name: string;
+  cut_id: string | null;
+  quantity_grams: number | null;
+  quantity_liters: number | null;
+  quantity_units: number | null;
+  is_calculated: boolean;
+  brought_by_guest_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ContributionRow {
+  id: string;
+  barbecue_id: string;
+  guest_id: string;
+  item_name: string;
+  category: ItemCategory;
+  quantity_description: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CookingSessionRow {
+  id: string;
+  barbecue_id: string;
+  item_id: string;
+  technique: CookingTechnique;
+  doneness: Doneness;
+  thickness_cm: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+}
+
+// Estrutura compatível com o helper `createClient<Database>()`.
+export interface Database {
+  public: {
+    Tables: {
+      barbecues: {
+        Row: BarbecueRow;
+        Insert: Omit<BarbecueRow, 'id' | 'share_token' | 'created_at' | 'updated_at'> &
+          Partial<Pick<BarbecueRow, 'id' | 'share_token' | 'created_at' | 'updated_at'>>;
+        Update: Partial<BarbecueRow>;
+      };
+      guests: {
+        Row: GuestRow;
+        Insert: Omit<GuestRow, 'id' | 'guest_token' | 'created_at'> &
+          Partial<Pick<GuestRow, 'id' | 'guest_token' | 'created_at'>>;
+        Update: Partial<GuestRow>;
+      };
+      items: {
+        Row: ItemRow;
+        Insert: Omit<ItemRow, 'id' | 'created_at'> & Partial<Pick<ItemRow, 'id' | 'created_at'>>;
+        Update: Partial<ItemRow>;
+      };
+      contributions: {
+        Row: ContributionRow;
+        Insert: Omit<ContributionRow, 'id' | 'created_at'> &
+          Partial<Pick<ContributionRow, 'id' | 'created_at'>>;
+        Update: Partial<ContributionRow>;
+      };
+      cooking_sessions: {
+        Row: CookingSessionRow;
+        Insert: Omit<CookingSessionRow, 'id'> & Partial<Pick<CookingSessionRow, 'id'>>;
+        Update: Partial<CookingSessionRow>;
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}

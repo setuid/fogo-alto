@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "Your barbecues",
+    "next_event": "Next event",
+    "upcoming": "Planning",
+    "past": "Past",
+    "create_new": "New barbecue",
+    "empty": "No barbecues yet. Let's get started?"
+  },
+  "fields": {
+    "title": "Title",
+    "description": "Description",
+    "event_date": "Date and time",
+    "location": "Location",
+    "style": "Style",
+    "estimated_guests": "Estimated guests",
+    "include_sides": "Include sides",
+    "notes": "Notes"
+  },
+  "styles": {
+    "tradicional": "Traditional",
+    "parrilla": "Parrilla",
+    "espeto_corrido": "Skewer rotation",
+    "americano": "American",
+    "misto": "Mixed"
+  },
+  "weight_profile": {
+    "label": "Appetite profile",
+    "light": "Light",
+    "normal": "Normal",
+    "heavy": "Heavy"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "guests": "Guests",
+    "list": "List",
+    "kitchen": "Kitchen"
+  },
+  "share": {
+    "title": "Invite the crew",
+    "copy_link": "Copy link",
+    "description": "Drop it in the group chat and watch them RSVP."
+  },
+  "cost": {
+    "title": "Estimated cost",
+    "subtitle": "Estimate based on average prices",
+    "show": "Show amounts",
+    "hide": "Hide amounts",
+    "last_updated": "Updated {{date}}",
+    "missing_prices": "No price reference for: {{items}}"
+  },
+  "cta_kitchen": "Fire it up",
+  "stamps": {
+    "calculated": "Calculated",
+    "guest_brings": "Guest brings"
+  }
+}

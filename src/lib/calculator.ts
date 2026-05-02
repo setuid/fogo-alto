@@ -1,0 +1,215 @@
+import { DRINK_CATALOG, MEAT_CUTS, SIDES, findCutById } from '@/data/catalog';
+import type { BarbecueStyle, WeightProfile } from '@/types/domain';
+
+export interface CalculationInput {
+  guests_count: number;
+  drinkers_count: number;
+  duration_hours: number;
+  style: BarbecueStyle;
+  include_sides: boolean;
+  meat_preferences: {
+    cut_ids: string[];
+    weight_profile: WeightProfile;
+  };
+  drink_preferences: {
+    beer: boolean;
+    wine: boolean;
+    caipirinha: boolean;
+    soft_drinks: boolean;
+  };
+}
+
+export interface MeatCalculation {
+  cut_id: string;
+  total_grams: number;
+  per_person_grams: number;
+}
+
+export interface DrinkCalculation {
+  type: string;
+  total_ml_or_units: number;
+  unit: 'ml' | 'unidade';
+}
+
+export interface SideCalculation {
+  id: string;
+  name_pt: string;
+  name_en: string;
+  total_grams: number;
+}
+
+export interface CalculationOutput {
+  meats: MeatCalculation[];
+  drinks: DrinkCalculation[];
+  sides: SideCalculation[];
+  meta: {
+    total_meat_grams: number;
+    target_grams_per_person: number;
+  };
+}
+
+const TOTAL_GRAMS_PER_PERSON: Record<WeightProfile, number> = {
+  light: 350,
+  normal: 450,
+  heavy: 600,
+};
+
+// Multiplicadores aplicados ao total de carne por pessoa, conforme o estilo.
+const STYLE_MULTIPLIERS: Record<BarbecueStyle, number> = {
+  tradicional: 1.0,
+  parrilla: 1.1,
+  espeto_corrido: 1.15,
+  americano: 0.95,
+  misto: 1.0,
+};
+
+// Distribuição de peso entre os cortes selecionados, ponderada pelo
+// `default_grams_per_person` de cada corte e ajustada pelo estilo.
+function distributeMeats(
+  cutIds: string[],
+  totalGramsPerPerson: number,
+  guestsCount: number,
+  style: BarbecueStyle,
+): MeatCalculation[] {
+  const cuts = cutIds.map(findCutById).filter((cut): cut is NonNullable<typeof cut> => Boolean(cut));
+  if (cuts.length === 0) return [];
+
+  // Estilos com poucos cortes nobres: priorizar bovinos.
+  const stylePreference = (cutId: string): number => {
+    const cut = findCutById(cutId);
+    if (!cut) return 1;
+    if (style === 'parrilla') {
+      return cut.category === 'bovina' ? 1.4 : 0.7;
+    }
+    if (style === 'espeto_corrido') {
+      // Mais variedade, distribuição mais equilibrada.
+      return 1.0;
+    }
+    return 1.0;
+  };
+
+  const weights = cuts.map((cut) => cut.default_grams_per_person * stylePreference(cut.id));
+  const weightSum = weights.reduce((acc, w) => acc + w, 0);
+  if (weightSum === 0) return [];
+
+  const totalGrams = totalGramsPerPerson * guestsCount;
+
+  return cuts.map((cut, idx) => {
+    const share = weights[idx] / weightSum;
+    const cutTotal = totalGrams * share;
+    return {
+      cut_id: cut.id,
+      total_grams: Math.round(cutTotal),
+      per_person_grams: Math.round(cutTotal / guestsCount),
+    };
+  });
+}
+
+function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
+  const { drinkers_count, guests_count, duration_hours, drink_preferences } = input;
+  const drinks: DrinkCalculation[] = [];
+
+  if (drink_preferences.beer) {
+    const def = DRINK_CATALOG.cerveja;
+    const totalMl = (def.avg_consumption_per_drinker_per_hour ?? 0) * duration_hours * drinkers_count;
+    drinks.push({ type: 'cerveja', total_ml_or_units: Math.round(totalMl), unit: def.unit });
+  }
+  if (drink_preferences.wine) {
+    const def = DRINK_CATALOG.vinho_tinto;
+    const totalMl = (def.avg_consumption_per_drinker ?? 0) * drinkers_count;
+    drinks.push({ type: 'vinho_tinto', total_ml_or_units: Math.round(totalMl), unit: def.unit });
+  }
+  if (drink_preferences.caipirinha) {
+    const def = DRINK_CATALOG.caipirinha;
+    const totalMl = (def.avg_consumption_per_drinker ?? 0) * drinkers_count;
+    drinks.push({ type: 'caipirinha', total_ml_or_units: Math.round(totalMl), unit: def.unit });
+  }
+  if (drink_preferences.soft_drinks) {
+    const refri = DRINK_CATALOG.refrigerante;
+    const refriMl = (refri.avg_consumption_per_person_per_hour ?? 0) * duration_hours * guests_count;
+    drinks.push({
+      type: 'refrigerante',
+      total_ml_or_units: Math.round(refriMl),
+      unit: refri.unit,
+    });
+  }
+
+  // Água é sempre incluída (não tem flag — todo churrasco precisa).
+  const agua = DRINK_CATALOG.agua;
+  const aguaMl = (agua.avg_consumption_per_person_per_hour ?? 0) * duration_hours * guests_count;
+  drinks.push({ type: 'agua', total_ml_or_units: Math.round(aguaMl), unit: agua.unit });
+
+  return drinks;
+}
+
+function calculateSides(guestsCount: number): SideCalculation[] {
+  return SIDES.map((side) => ({
+    id: side.id,
+    name_pt: side.name_pt,
+    name_en: side.name_en,
+    total_grams: side.grams_per_person * guestsCount,
+  }));
+}
+
+export function calculate(input: CalculationInput): CalculationOutput {
+  if (input.guests_count <= 0) {
+    throw new Error('guests_count must be positive');
+  }
+  if (input.drinkers_count < 0 || input.drinkers_count > input.guests_count) {
+    throw new Error('drinkers_count must be between 0 and guests_count');
+  }
+  if (input.duration_hours <= 0) {
+    throw new Error('duration_hours must be positive');
+  }
+
+  const baseGrams = TOTAL_GRAMS_PER_PERSON[input.meat_preferences.weight_profile];
+  const styleMultiplier = STYLE_MULTIPLIERS[input.style];
+  const targetGramsPerPerson = Math.round(baseGrams * styleMultiplier);
+
+  const meats = distributeMeats(
+    input.meat_preferences.cut_ids,
+    targetGramsPerPerson,
+    input.guests_count,
+    input.style,
+  );
+
+  const drinks = calculateDrinks(input);
+  const sides = input.include_sides ? calculateSides(input.guests_count) : [];
+
+  const totalMeatGrams = meats.reduce((acc, m) => acc + m.total_grams, 0);
+
+  return {
+    meats,
+    drinks,
+    sides,
+    meta: {
+      total_meat_grams: totalMeatGrams,
+      target_grams_per_person: targetGramsPerPerson,
+    },
+  };
+}
+
+// Cortes sugeridos por estilo — ponto de partida quando o anfitrião não escolheu manualmente.
+export function suggestCutsForStyle(style: BarbecueStyle): string[] {
+  switch (style) {
+    case 'parrilla':
+      return ['picanha', 'fraldinha', 'maminha', 'linguica'];
+    case 'espeto_corrido':
+      return [
+        'picanha',
+        'fraldinha',
+        'alcatra',
+        'linguica',
+        'asinha_frango',
+        'coracao_frango',
+        'queijo_coalho',
+        'pao_alho',
+      ];
+    case 'tradicional':
+      return ['picanha', 'linguica', 'asinha_frango', 'queijo_coalho', 'pao_alho'];
+    case 'americano':
+      return ['fraldinha', 'asinha_frango', 'linguica'];
+    case 'misto':
+      return MEAT_CUTS.slice(0, 6).map((c) => c.id);
+  }
+}

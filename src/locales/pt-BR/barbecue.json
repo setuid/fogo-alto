@@ -1,0 +1,57 @@
+{
+  "dashboard": {
+    "title": "Seus churrascos",
+    "next_event": "Próximo evento",
+    "upcoming": "Em planejamento",
+    "past": "Anteriores",
+    "create_new": "Novo churrasco",
+    "empty": "Nenhum churrasco ainda. Bora começar?"
+  },
+  "fields": {
+    "title": "Título",
+    "description": "Descrição",
+    "event_date": "Data e hora",
+    "location": "Local",
+    "style": "Estilo",
+    "estimated_guests": "Convidados estimados",
+    "include_sides": "Incluir acompanhamentos",
+    "notes": "Observações"
+  },
+  "styles": {
+    "tradicional": "Tradicional",
+    "parrilla": "Parrilla",
+    "espeto_corrido": "Espeto corrido",
+    "americano": "Americano",
+    "misto": "Misto"
+  },
+  "weight_profile": {
+    "label": "Perfil de consumo",
+    "light": "Leve",
+    "normal": "Normal",
+    "heavy": "Pesado"
+  },
+  "tabs": {
+    "overview": "Visão geral",
+    "guests": "Convidados",
+    "list": "Lista",
+    "kitchen": "Cozinha"
+  },
+  "share": {
+    "title": "Convide os parceiros",
+    "copy_link": "Copiar link",
+    "description": "Mande pro grupo do WhatsApp e veja a galera confirmando."
+  },
+  "cost": {
+    "title": "Custo estimado",
+    "subtitle": "Estimativa baseada em preços médios",
+    "show": "Mostrar valores",
+    "hide": "Esconder valores",
+    "last_updated": "Atualizado em {{date}}",
+    "missing_prices": "Sem referência de preço para: {{items}}"
+  },
+  "cta_kitchen": "Hora da brasa",
+  "stamps": {
+    "calculated": "Calculado",
+    "guest_brings": "Convidado traz"
+  }
+}
