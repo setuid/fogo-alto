@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Clock, Flame, Play, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Clock, Flame, Play, Sparkles } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -177,38 +177,63 @@ export function CookingMode() {
           </section>
         )}
 
-        {plan.length > 0 && <PlanCard plan={plan} isPt={isPt} />}
+        {plan.length > 0 && (
+          <CollapsibleSection title={isPt ? 'Plano sugerido' : 'Suggested plan'} defaultOpen>
+            <PlanCardContent plan={plan} isPt={isPt} />
+          </CollapsibleSection>
+        )}
 
         {aperitivos.length > 0 && (
-          <CategorySection
-            title={isPt ? 'Aperitivos' : 'Appetizers'}
-            iconColor="text-ember"
-            meats={aperitivos}
-            useVegetableIcon={false}
-          />
+          <CollapsibleSection title={isPt ? 'Aperitivos' : 'Appetizers'} defaultOpen={false}>
+            <CategoryItems meats={aperitivos} iconColor="text-ember" useVegetableIcon={false} />
+          </CollapsibleSection>
         )}
         {carnes.length > 0 && (
-          <CategorySection
-            title={isPt ? 'Carnes' : 'Meats'}
-            iconColor="text-tomato"
-            meats={carnes}
-            useVegetableIcon={false}
-          />
+          <CollapsibleSection title={isPt ? 'Carnes' : 'Meats'} defaultOpen={false}>
+            <CategoryItems meats={carnes} iconColor="text-tomato" useVegetableIcon={false} />
+          </CollapsibleSection>
         )}
         {legumes.length > 0 && (
-          <CategorySection
-            title={isPt ? 'Legumes' : 'Vegetables'}
-            iconColor="text-olive-deep"
-            meats={legumes}
-            useVegetableIcon
-          />
+          <CollapsibleSection title={isPt ? 'Legumes' : 'Vegetables'} defaultOpen={false}>
+            <CategoryItems meats={legumes} iconColor="text-olive-deep" useVegetableIcon />
+          </CollapsibleSection>
         )}
       </div>
     </div>
   );
 }
 
-function PlanCard({ plan, isPt }: { plan: PlanItem[]; isPt: boolean }) {
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg text-left text-stamp text-tomato-deep transition-colors hover:text-tomato"
+        aria-expanded={open}
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+            open ? '' : '-rotate-90'
+          }`}
+        />
+      </button>
+      {open && children}
+    </section>
+  );
+}
+
+function PlanCardContent({ plan, isPt }: { plan: PlanItem[]; isPt: boolean }) {
   const start = useTimers((s) => s.start);
 
   const handleStart = (item: PlanItem) => {
@@ -227,10 +252,6 @@ function PlanCard({ plan, isPt }: { plan: PlanItem[]; isPt: boolean }) {
   };
 
   return (
-    <section>
-      <h3 className="mb-2 text-stamp text-tomato-deep">
-        {isPt ? 'Plano sugerido' : 'Suggested plan'}
-      </h3>
       <Card className="p-4">
         <div className="mb-3 flex items-start gap-2">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-tomato" />
@@ -292,36 +313,30 @@ function PlanCard({ plan, isPt }: { plan: PlanItem[]; isPt: boolean }) {
           })}
         </ol>
       </Card>
-    </section>
   );
 }
 
-function CategorySection({
-  title,
-  iconColor,
+function CategoryItems({
   meats,
+  iconColor,
   useVegetableIcon,
 }: {
-  title: string;
-  iconColor: string;
   meats: { cut_id: string; total_grams: number }[];
+  iconColor: string;
   useVegetableIcon: boolean;
 }) {
   return (
-    <section>
-      <h3 className="mb-3 text-stamp text-tomato-deep">{title}</h3>
-      <div className="grid gap-3">
-        {meats.map((m) => (
-          <CookingItem
-            key={m.cut_id}
-            cutId={m.cut_id}
-            totalGrams={m.total_grams}
-            iconColor={iconColor}
-            useVegetableIcon={useVegetableIcon}
-          />
-        ))}
-      </div>
-    </section>
+    <div className="grid gap-3">
+      {meats.map((m) => (
+        <CookingItem
+          key={m.cut_id}
+          cutId={m.cut_id}
+          totalGrams={m.total_grams}
+          iconColor={iconColor}
+          useVegetableIcon={useVegetableIcon}
+        />
+      ))}
+    </div>
   );
 }
 
