@@ -31,7 +31,29 @@ export interface DrinkCalculation {
   type: string;
   total_ml_or_units: number;
   unit: 'ml' | 'unidade';
+  // Conversão pra unidades de venda do mercado.
+  bottle_size_ml?: number;
+  bottle_label_pt?: string;
+  bottle_label_en?: string;
+  bottles?: number;
+  // Estimativa de doses individuais (ex.: caipirinhas servidas).
+  serving_count?: number;
+  serving_label_pt?: string;
+  serving_label_en?: string;
 }
+
+// Tamanho típico de garrafa por tipo de bebida no varejo brasileiro.
+const BOTTLE_SIZES = {
+  cerveja: { ml: 355, label_pt: 'long neck', label_en: 'long neck' },
+  vinho_tinto: { ml: 750, label_pt: 'garrafa', label_en: 'bottle' },
+  caipirinha: { ml: 700, label_pt: 'garrafa de cachaça', label_en: 'cachaça bottle' },
+  refrigerante: { ml: 2000, label_pt: 'garrafa de 2L', label_en: '2L bottle' },
+  suco: { ml: 1000, label_pt: 'caixa de 1L', label_en: '1L carton' },
+  agua: { ml: 1500, label_pt: 'garrafa de 1.5L', label_en: '1.5L bottle' },
+} as const;
+
+// Caipirinha usa ~50 ml de cachaça por dose, mais limão/açúcar à parte.
+const CAIPIRINHA_ML_PER_SERVING = 50;
 
 export interface SideCalculation {
   id: string;
@@ -135,6 +157,21 @@ function calculateSides(quantities: Record<string, number>): SideCalculation[] {
     .filter((s): s is SideCalculation => s !== null);
 }
 
+function bottlesFor(type: keyof typeof BOTTLE_SIZES, totalMl: number): {
+  bottles: number;
+  bottle_size_ml: number;
+  bottle_label_pt: string;
+  bottle_label_en: string;
+} {
+  const meta = BOTTLE_SIZES[type];
+  return {
+    bottles: Math.ceil(totalMl / meta.ml),
+    bottle_size_ml: meta.ml,
+    bottle_label_pt: meta.label_pt,
+    bottle_label_en: meta.label_en,
+  };
+}
+
 function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
   const { drinkers_count, duration_hours, drink_preferences } = input;
   const headCount = input.adults_count + input.children_count;
@@ -143,17 +180,35 @@ function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
   if (drink_preferences.beer) {
     const def = DRINK_CATALOG.cerveja;
     const totalMl = (def.avg_consumption_per_drinker_per_hour ?? 0) * duration_hours * drinkers_count;
-    drinks.push({ type: 'cerveja', total_ml_or_units: Math.round(totalMl), unit: def.unit });
+    drinks.push({
+      type: 'cerveja',
+      total_ml_or_units: Math.round(totalMl),
+      unit: def.unit,
+      ...bottlesFor('cerveja', totalMl),
+    });
   }
   if (drink_preferences.wine) {
     const def = DRINK_CATALOG.vinho_tinto;
     const totalMl = (def.avg_consumption_per_drinker ?? 0) * drinkers_count;
-    drinks.push({ type: 'vinho_tinto', total_ml_or_units: Math.round(totalMl), unit: def.unit });
+    drinks.push({
+      type: 'vinho_tinto',
+      total_ml_or_units: Math.round(totalMl),
+      unit: def.unit,
+      ...bottlesFor('vinho_tinto', totalMl),
+    });
   }
   if (drink_preferences.caipirinha) {
     const def = DRINK_CATALOG.caipirinha;
     const totalMl = (def.avg_consumption_per_drinker ?? 0) * drinkers_count;
-    drinks.push({ type: 'caipirinha', total_ml_or_units: Math.round(totalMl), unit: def.unit });
+    drinks.push({
+      type: 'caipirinha',
+      total_ml_or_units: Math.round(totalMl),
+      unit: def.unit,
+      ...bottlesFor('caipirinha', totalMl),
+      serving_count: Math.ceil(totalMl / CAIPIRINHA_ML_PER_SERVING),
+      serving_label_pt: 'caipirinhas',
+      serving_label_en: 'caipirinhas',
+    });
   }
   if (drink_preferences.soft_drinks) {
     const refri = DRINK_CATALOG.refrigerante;
@@ -162,13 +217,19 @@ function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
       type: 'refrigerante',
       total_ml_or_units: Math.round(refriMl),
       unit: refri.unit,
+      ...bottlesFor('refrigerante', refriMl),
     });
   }
 
   // Água sempre presente, escala por head count completo.
   const agua = DRINK_CATALOG.agua;
   const aguaMl = (agua.avg_consumption_per_person_per_hour ?? 0) * duration_hours * headCount;
-  drinks.push({ type: 'agua', total_ml_or_units: Math.round(aguaMl), unit: agua.unit });
+  drinks.push({
+    type: 'agua',
+    total_ml_or_units: Math.round(aguaMl),
+    unit: agua.unit,
+    ...bottlesFor('agua', aguaMl),
+  });
 
   return drinks;
 }

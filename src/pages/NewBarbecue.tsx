@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Beef, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,9 +20,41 @@ import { Badge } from '@/components/ui/badge';
 import { BudgetTracker } from '@/components/shared/BudgetTracker';
 import { QuantityStepper } from '@/components/shared/QuantityStepper';
 import { FieldError } from '@/components/shared/FieldError';
+import { CutIcon } from '@/components/icons/CutIcon';
+import { VegetableIcon } from '@/components/icons/VegetableIcon';
+import { AnimalDiagram } from '@/components/cuts/AnimalDiagram';
+import { DrinkRow } from '@/components/shared/DrinkRow';
 import { toast } from '@/components/ui/sonner';
 
 import { MEAT_CUTS, SIDES } from '@/data/catalog';
+
+// Cuts que são tratados como "vegetais grelháveis" no wizard. Os IDs nesse
+// set são renderizados com VegetableIcon e mostrados na seção "Legumes
+// & extras", separada visualmente das carnes.
+const VEGETABLE_IDS = new Set([
+  'cenoura',
+  'palmito_pupunha',
+  'batata',
+  'cebola',
+  'tomate',
+  'pimentao_vermelho',
+  'pimentao_amarelo',
+  'pimentao_verde',
+  'aspargos',
+  'abobrinha',
+  'berinjela',
+  'cogumelo',
+]);
+
+// Cuts não-bovinos/suínos/aves que vão pra brasa mas não são propriamente
+// carnes nem legumes (queijo, pão de alho, abacaxi).
+const EXTRA_IDS = new Set(['queijo_coalho', 'pao_alho', 'abacaxi']);
+
+const MEAT_CUT_LIST = MEAT_CUTS.filter(
+  (c) => !VEGETABLE_IDS.has(c.id) && !EXTRA_IDS.has(c.id),
+);
+const VEGETABLE_LIST = MEAT_CUTS.filter((c) => VEGETABLE_IDS.has(c.id));
+const EXTRA_LIST = MEAT_CUTS.filter((c) => EXTRA_IDS.has(c.id));
 import { useBarbecues, useCreateBarbecue, useDuplicateBarbecue } from '@/hooks/useBarbecue';
 import {
   calculate,
@@ -524,6 +556,8 @@ function Step3Picks({
   ) => void;
   cutError?: string;
 }) {
+  const [animalOpen, setAnimalOpen] = useState(false);
+
   const meatTarget = useMemo(
     () =>
       suggestedMeatGrams(
@@ -548,46 +582,82 @@ function Step3Picks({
     return acc + n * s.typical_portion_kg * 1000;
   }, 0);
 
+  const incrementCut = (cutId: string) => {
+    setCutQty(cutId, (values.cut_quantities[cutId] ?? 0) + 1);
+  };
+
   return (
     <div className="space-y-6">
       <section>
         <BudgetTracker
-          label="Carnes"
+          label="Carnes & extras"
           targetGrams={meatTarget}
           selectedGrams={meatSelected}
           className="mb-3"
         />
-        <p className="text-xs text-ink/55">
-          Use os botões pra adicionar peças. Cada peça é o tamanho típico vendido no açougue.
-        </p>
-        <div className="mt-3 space-y-2">
-          {MEAT_CUTS.map((cut) => {
-            const n = values.cut_quantities[cut.id] ?? 0;
-            const subtotal = n * cut.typical_piece_kg * 1000;
-            return (
-              <div
-                key={cut.id}
-                className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
-                  n > 0
-                    ? 'border-tomato bg-tomato/5'
-                    : 'border-ink/10 bg-cream-paper hover:border-ink/20'
-                }`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="truncate font-medium">{cut.name_pt}</p>
-                  <p className="truncate text-xs text-ink/55">
-                    1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
-                  </p>
-                </div>
-                <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
-                  {n > 0 ? formatGrams(subtotal) : '—'}
-                </span>
-                <QuantityStepper value={n} onChange={(next) => setCutQty(cut.id, next)} />
-              </div>
-            );
-          })}
+
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs text-ink/55">
+            Use os botões pra adicionar peças. Cada peça é o tamanho típico do açougue.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAnimalOpen(true)}
+          >
+            <Beef className="h-4 w-4" /> Ver no animal
+          </Button>
         </div>
-        {cutError && <FieldError message={cutError} className="mt-2" />}
+
+        <h4 className="mb-2 text-stamp text-tomato-deep">Carnes</h4>
+        <div className="space-y-2">
+          {MEAT_CUT_LIST.map((cut) => (
+            <CutRow
+              key={cut.id}
+              cut={cut}
+              quantity={values.cut_quantities[cut.id] ?? 0}
+              onChange={(n) => setCutQty(cut.id, n)}
+              icon={<CutIcon cutId={cut.id} className="h-7 w-7 text-tomato" />}
+            />
+          ))}
+        </div>
+
+        {EXTRA_LIST.length > 0 && (
+          <>
+            <h4 className="mt-4 mb-2 text-stamp text-tomato-deep">Extras na brasa</h4>
+            <div className="space-y-2">
+              {EXTRA_LIST.map((cut) => (
+                <CutRow
+                  key={cut.id}
+                  cut={cut}
+                  quantity={values.cut_quantities[cut.id] ?? 0}
+                  onChange={(n) => setCutQty(cut.id, n)}
+                  icon={<CutIcon cutId={cut.id} className="h-7 w-7 text-ember" />}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {VEGETABLE_LIST.length > 0 && (
+          <>
+            <h4 className="mt-4 mb-2 text-stamp text-tomato-deep">Legumes pra grelhar</h4>
+            <div className="space-y-2">
+              {VEGETABLE_LIST.map((cut) => (
+                <CutRow
+                  key={cut.id}
+                  cut={cut}
+                  quantity={values.cut_quantities[cut.id] ?? 0}
+                  onChange={(n) => setCutQty(cut.id, n)}
+                  icon={<VegetableIcon vegetableId={cut.id} className="h-7 w-7 text-olive-deep" />}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {cutError && <FieldError message={cutError} className="mt-3" />}
       </section>
 
       <section>
@@ -597,7 +667,7 @@ function Step3Picks({
           selectedGrams={sidesSelected}
           className="mb-3"
         />
-        <div className="mt-3 space-y-2">
+        <div className="space-y-2">
           {SIDES.map((side) => {
             const n = values.side_quantities[side.id] ?? 0;
             const subtotal = n * side.typical_portion_kg * 1000;
@@ -645,6 +715,48 @@ function Step3Picks({
           ))}
         </div>
       </section>
+
+      <AnimalDiagram
+        open={animalOpen}
+        onOpenChange={setAnimalOpen}
+        cutQuantities={values.cut_quantities}
+        onAddCut={incrementCut}
+      />
+    </div>
+  );
+}
+
+function CutRow({
+  cut,
+  quantity,
+  onChange,
+  icon,
+}: {
+  cut: (typeof MEAT_CUTS)[number];
+  quantity: number;
+  onChange: (n: number) => void;
+  icon: React.ReactNode;
+}) {
+  const subtotal = quantity * cut.typical_piece_kg * 1000;
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+        quantity > 0
+          ? 'border-tomato bg-tomato/5'
+          : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+      }`}
+    >
+      <span className="shrink-0">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="truncate font-medium">{cut.name_pt}</p>
+        <p className="truncate text-xs text-ink/55">
+          1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
+        </p>
+      </div>
+      <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
+        {quantity > 0 ? formatGrams(subtotal) : '—'}
+      </span>
+      <QuantityStepper value={quantity} onChange={onChange} />
     </div>
   );
 }
@@ -751,14 +863,9 @@ function ReviewStep({
         <CardHeader>
           <CardTitle className="text-lg">Bebidas</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm">
+        <CardContent className="space-y-2 text-sm">
           {calc.drinks.map((d) => (
-            <div key={d.type} className="flex justify-between">
-              <span>{d.type}</span>
-              <span className="text-ink/65">
-                {d.unit === 'ml' ? `${(d.total_ml_or_units / 1000).toFixed(1)} L` : d.total_ml_or_units}
-              </span>
-            </div>
+            <DrinkRow key={d.type} drink={d} />
           ))}
         </CardContent>
       </Card>
