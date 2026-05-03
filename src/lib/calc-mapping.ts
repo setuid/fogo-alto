@@ -11,6 +11,7 @@ interface LegacyCalcParams {
   side_ids?: string[];
   cut_quantities?: Record<string, number>;
   side_quantities?: Record<string, number>;
+  dessert_quantities?: Record<string, number>;
   adults_count?: number;
   children_count?: number;
   drinkers_count?: number;
@@ -58,10 +59,11 @@ export function calcInputFromBarbecue(bbq: BarbecueRow): CalculationInput {
     style: bbq.style,
     cut_quantities: cutQuantities,
     side_quantities: sideQuantities,
+    dessert_quantities: params.dessert_quantities ?? {},
     weight_profile: params.weight_profile ?? 'normal',
     drink_preferences: params.drink_preferences ?? {
       beer: true,
-      wine: false,
+      wine: true,
       caipirinha: false,
       soft_drinks: true,
     },

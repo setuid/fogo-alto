@@ -25,7 +25,7 @@ import { AnimalDiagram } from '@/components/cuts/AnimalDiagram';
 import { DrinkRow } from '@/components/shared/DrinkRow';
 import { toast } from '@/components/ui/sonner';
 
-import { MEAT_CUTS, SIDES } from '@/data/catalog';
+import { DESSERTS, MEAT_CUTS, SIDES } from '@/data/catalog';
 
 // Aperitivos: peças leves que costumam abrir o churrasco.
 const APERITIVO_ORDER = [
@@ -119,6 +119,7 @@ const schema = z
       .max(24, { message: 'No máximo 24 horas.' }),
     cut_quantities: quantitiesSchema,
     side_quantities: quantitiesSchema,
+    dessert_quantities: quantitiesSchema,
     drink_beer: z.boolean(),
     drink_wine: z.boolean(),
     drink_caipirinha: z.boolean(),
@@ -164,8 +165,10 @@ export function NewBarbecue() {
       // sugestão pré-marcada (que confundia em pequenos churrascos).
       cut_quantities: {},
       side_quantities: {},
+      dessert_quantities: {},
+      // Vinho é a bebida principal default; cerveja vem junto.
+      drink_wine: true,
       drink_beer: true,
-      drink_wine: false,
       drink_caipirinha: false,
       drink_soft: true,
     },
@@ -203,11 +206,19 @@ export function NewBarbecue() {
     form.setValue('side_quantities', current);
   };
 
+  const setDessertQty = (dessertId: string, n: number) => {
+    const current = { ...form.getValues('dessert_quantities') };
+    if (n <= 0) delete current[dessertId];
+    else current[dessertId] = n;
+    form.setValue('dessert_quantities', current);
+  };
+
   const onSubmit = form.handleSubmit(
     async (values) => {
       const calc_params: CalcParams = {
         cut_quantities: values.cut_quantities,
         side_quantities: values.side_quantities,
+        dessert_quantities: values.dessert_quantities,
         adults_count: values.adults_count,
         children_count: values.children_count,
         drinkers_count: values.drinkers_count,
@@ -296,6 +307,7 @@ export function NewBarbecue() {
                 values={v}
                 setCutQty={setCutQty}
                 setSideQty={setSideQty}
+                setDessertQty={setDessertQty}
                 onDrinkChange={(key, c) => form.setValue(key, c)}
                 cutError={form.formState.errors.cut_quantities?.message?.toString()}
               />
@@ -595,12 +607,14 @@ function Step3Picks({
   values,
   setCutQty,
   setSideQty,
+  setDessertQty,
   onDrinkChange,
   cutError,
 }: {
   values: FormValues;
   setCutQty: (id: string, n: number) => void;
   setSideQty: (id: string, n: number) => void;
+  setDessertQty: (id: string, n: number) => void;
   onDrinkChange: (
     key: 'drink_beer' | 'drink_wine' | 'drink_caipirinha' | 'drink_soft',
     next: boolean,
@@ -748,11 +762,57 @@ function Step3Picks({
       </section>
 
       <section>
+        <h3 className="font-display text-lg">Sobremesas</h3>
+        <p className="text-xs text-ink/55">
+          Opcional — pode pular se preferir só café no final.
+        </p>
+        <div className="mt-3 space-y-2">
+          {DESSERTS.map((dessert) => {
+            const n = values.dessert_quantities[dessert.id] ?? 0;
+            const subtotal = n * dessert.typical_portion_kg * 1000;
+            return (
+              <div
+                key={dessert.id}
+                className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
+                  n > 0
+                    ? 'border-tomato bg-tomato/5'
+                    : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+                }`}
+              >
+                <span className="shrink-0 text-2xl leading-none mt-0.5" aria-hidden>
+                  {dessert.emoji ?? '🍰'}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium leading-tight break-words">{dessert.name_pt}</p>
+                  <p className="mt-0.5 text-xs text-ink/55">
+                    1 {dessert.portion_label_pt} (~{dessert.serves_people} pessoas)
+                    {n > 0 && (
+                      <>
+                        {' · '}
+                        <span className="font-medium text-tomato-deep tabular-nums">
+                          {formatGrams(subtotal)}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <QuantityStepper
+                  value={n}
+                  onChange={(next) => setDessertQty(dessert.id, next)}
+                  className="shrink-0"
+                />
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section>
         <h3 className="font-display text-lg">Bebidas</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {[
-            { key: 'drink_beer' as const, label: 'Cerveja' },
             { key: 'drink_wine' as const, label: 'Vinho' },
+            { key: 'drink_beer' as const, label: 'Cerveja' },
             { key: 'drink_caipirinha' as const, label: 'Caipirinha' },
             { key: 'drink_soft' as const, label: 'Refrigerante / suco' },
           ].map((b) => (
@@ -835,6 +895,7 @@ function ReviewStep({ values }: { values: FormValues }) {
     calc_params: {
       cut_quantities: values.cut_quantities,
       side_quantities: values.side_quantities,
+      dessert_quantities: values.dessert_quantities,
       adults_count: values.adults_count,
       children_count: values.children_count,
       drinkers_count: values.drinkers_count,
@@ -901,6 +962,25 @@ function ReviewStep({ values }: { values: FormValues }) {
                   {s.pieces}× {s.name_pt}
                 </span>
                 <span className="text-ink/65">{formatGrams(s.total_grams)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {calc.desserts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Sobremesas</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-1 text-sm">
+            {calc.desserts.map((d) => (
+              <div key={d.id} className="flex justify-between">
+                <span>
+                  {d.emoji ? `${d.emoji} ` : ''}
+                  {d.pieces}× {d.name_pt}
+                </span>
+                <span className="text-ink/65">{formatGrams(d.total_grams)}</span>
               </div>
             ))}
           </CardContent>

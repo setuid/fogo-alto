@@ -31,6 +31,10 @@ export default defineConfig({
         // Pré-cache do shell + cache em runtime: catálogo bilíngue, fontes Google
         // e dados do supabase (modo cozinha funciona offline).
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        // Faz a nova versão do service worker tomar conta na próxima visita
+        // sem o usuário precisar fechar todas as abas / limpar cache.
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

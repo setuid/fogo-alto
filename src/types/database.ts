@@ -17,6 +17,8 @@ export interface CalcParams {
   cut_quantities: Record<string, number>;
   // Quantidade de porções por acompanhamento.
   side_quantities: Record<string, number>;
+  // Quantidade de porções por sobremesa.
+  dessert_quantities?: Record<string, number>;
   // Convidados separados por faixa etária — crianças consomem ~metade.
   adults_count: number;
   children_count: number;

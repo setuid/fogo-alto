@@ -1,4 +1,4 @@
-import { DRINK_CATALOG, SIDES, findCutById } from '@/data/catalog';
+import { DESSERTS, DRINK_CATALOG, SIDES, findCutById } from '@/data/catalog';
 import type { BarbecueStyle, WeightProfile } from '@/types/domain';
 
 export interface CalculationInput {
@@ -11,6 +11,9 @@ export interface CalculationInput {
   cut_quantities: Record<string, number>;
   // side_id -> número de porções.
   side_quantities: Record<string, number>;
+  // dessert_id -> número de porções. Opcional pra compat com churrascos
+  // antigos sem o campo no calc_params.
+  dessert_quantities?: Record<string, number>;
   weight_profile: WeightProfile;
   drink_preferences: {
     beer: boolean;
@@ -101,10 +104,22 @@ export interface SideCalculation {
   total_grams: number;
 }
 
+export interface DessertCalculation {
+  id: string;
+  name_pt: string;
+  name_en: string;
+  pieces: number;
+  piece_weight_grams: number;
+  total_grams: number;
+  serves_total_people: number;
+  emoji?: string;
+}
+
 export interface CalculationOutput {
   meats: MeatCalculation[];
   drinks: DrinkCalculation[];
   sides: SideCalculation[];
+  desserts: DessertCalculation[];
   meta: {
     target_meat_grams: number;
     selected_meat_grams: number;
@@ -173,6 +188,28 @@ function calculateMeats(quantities: Record<string, number>): MeatCalculation[] {
       };
     })
     .filter((m): m is MeatCalculation => m !== null);
+}
+
+function calculateDesserts(quantities: Record<string, number>): DessertCalculation[] {
+  const result: DessertCalculation[] = [];
+  for (const [dessertId, pieces] of Object.entries(quantities)) {
+    if (pieces <= 0) continue;
+    const def = DESSERTS.find((d) => d.id === dessertId);
+    if (!def) continue;
+    const pieceGrams = Math.round(def.typical_portion_kg * 1000);
+    const item: DessertCalculation = {
+      id: def.id,
+      name_pt: def.name_pt,
+      name_en: def.name_en,
+      pieces,
+      piece_weight_grams: pieceGrams,
+      total_grams: pieces * pieceGrams,
+      serves_total_people: pieces * def.serves_people,
+    };
+    if (def.emoji) item.emoji = def.emoji;
+    result.push(item);
+  }
+  return result;
 }
 
 function calculateSides(quantities: Record<string, number>): SideCalculation[] {
@@ -296,6 +333,7 @@ export function calculate(input: CalculationInput): CalculationOutput {
 
   const meats = calculateMeats(input.cut_quantities);
   const sides = calculateSides(input.side_quantities);
+  const desserts = calculateDesserts(input.dessert_quantities ?? {});
   const drinks = calculateDrinks(input);
 
   const selectedMeatGrams = meats.reduce((acc, m) => acc + m.total_grams, 0);
@@ -305,6 +343,7 @@ export function calculate(input: CalculationInput): CalculationOutput {
     meats,
     drinks,
     sides,
+    desserts,
     meta: {
       target_meat_grams: targetMeatGrams,
       selected_meat_grams: selectedMeatGrams,
