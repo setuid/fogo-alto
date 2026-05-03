@@ -541,10 +541,11 @@ function SuggestionBanner({
 
   // Estimativas pra abertura (na hora de comprar). Quantidades calibradas
   // pra ninguém ficar bêbado nem ressacado: 250 ml de vinho/pessoa por
-  // evento, 500 ml de cerveja/hora — limites já usados pelo engine.
+  // evento, 350 ml de cerveja/hora (~1 long neck/h) — mesmas constantes
+  // do DRINK_CATALOG.
   const wineMl = drinkers * 250;
   const wineBottles = wineMl > 0 ? Math.ceil(wineMl / 750) : 0;
-  const beerMl = drinkers * 500 * durationHours;
+  const beerMl = drinkers * 350 * durationHours;
   const beerLongNecks = beerMl > 0 ? Math.ceil(beerMl / 355) : 0;
 
   return (

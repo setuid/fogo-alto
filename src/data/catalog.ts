@@ -822,7 +822,10 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'cerveja',
     unit: 'ml',
     alcoholic: true,
-    avg_consumption_per_drinker_per_hour: 500,
+    // ~1 long neck por hora por bebedor. Suficiente pra socializar
+    // sem ninguém ficar bêbado — antes era 500 ml/h (~1,4 long necks/h),
+    // que dava mais de 7 long necks por pessoa em 5h.
+    avg_consumption_per_drinker_per_hour: 350,
   },
   vinho_tinto: {
     id: 'vinho_tinto',
@@ -831,6 +834,7 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'vinho',
     unit: 'ml',
     alcoholic: true,
+    // ~1/3 de garrafa por bebedor durante todo o evento.
     avg_consumption_per_drinker: 250,
   },
   caipirinha: {
@@ -840,7 +844,8 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'destilado',
     unit: 'ml',
     alcoholic: true,
-    avg_consumption_per_drinker: 200, // cachaça por bebedor pro evento todo
+    // ~4 doses de 50 ml de cachaça por bebedor.
+    avg_consumption_per_drinker: 200,
   },
   refrigerante: {
     id: 'refrigerante',
@@ -849,7 +854,8 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'soft',
     unit: 'ml',
     alcoholic: false,
-    avg_consumption_per_person_per_hour: 250,
+    // ~2 latas (~600 ml) por pessoa em 5h. Antes era 1,25 L/pessoa.
+    avg_consumption_per_person_per_hour: 120,
   },
   suco: {
     id: 'suco',
@@ -858,7 +864,8 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'soft',
     unit: 'ml',
     alcoholic: false,
-    avg_consumption_per_person_per_hour: 200,
+    // ~2 copos por pessoa em 5h.
+    avg_consumption_per_person_per_hour: 100,
   },
   agua: {
     id: 'agua',
@@ -867,7 +874,8 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'agua',
     unit: 'ml',
     alcoholic: false,
-    avg_consumption_per_person_per_hour: 300,
+    // ~1,25 L/pessoa em 5h. Antes era 1,5 L/pessoa, levemente alto.
+    avg_consumption_per_person_per_hour: 250,
   },
 };
 
