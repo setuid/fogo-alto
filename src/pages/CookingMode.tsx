@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Flame, Play } from 'lucide-react';
+import { ArrowLeft, Clock, Flame, Play, Sparkles } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { TimerCard } from '@/components/cooking/TimerCard';
+import { CutIcon } from '@/components/icons/CutIcon';
+import { VegetableIcon } from '@/components/icons/VegetableIcon';
 
 import { useBarbecue } from '@/hooks/useBarbecue';
 import { useTimers } from '@/stores/timerStore';
@@ -34,17 +36,118 @@ const DONENESSES: Doneness[] = [
   'bem_passado',
 ];
 
+// Mesma divisão do wizard pra organizar a tela.
+const APERITIVO_IDS = new Set([
+  'linguica',
+  'salsichao',
+  'asinha_frango',
+  'coracao_frango',
+  'sobrecoxa_frango',
+  'queijo_coalho',
+  'pao_alho',
+  'abacaxi',
+]);
+const VEGETABLE_IDS = new Set([
+  'cenoura',
+  'palmito_pupunha',
+  'batata',
+  'cebola',
+  'tomate',
+  'pimentao_vermelho',
+  'pimentao_amarelo',
+  'pimentao_verde',
+  'aspargos',
+  'abobrinha',
+  'berinjela',
+  'cogumelo',
+]);
+
+const DEFAULT_DONENESS: Doneness = 'ao_ponto';
+const DEFAULT_THICKNESS_CM = 3;
+
+interface PlanItem {
+  cut_id: string;
+  total_minutes: number;
+  rest_minutes: number;
+  minutes_per_side: number;
+  technique: CookingTechnique;
+  // Tempo total = cooking + descanso. Define quem entra primeiro.
+  total_with_rest_minutes: number;
+  // Atraso (em minutos) em relação ao item mais demorado, pra todos
+  // ficarem prontos juntos.
+  delay_from_first_minutes: number;
+}
+
+function buildPlan(meats: { cut_id: string }[]): PlanItem[] {
+  const items: PlanItem[] = [];
+  for (const m of meats) {
+    const cut = findCutById(m.cut_id);
+    if (!cut) continue;
+    const technique = (cut.techniques[0] ?? 'parrilla') as CookingTechnique;
+    const time = resolveCookingTime(
+      m.cut_id,
+      technique,
+      DEFAULT_DONENESS,
+      DEFAULT_THICKNESS_CM,
+    );
+    if (!time) continue;
+    items.push({
+      cut_id: m.cut_id,
+      total_minutes: time.total_minutes,
+      rest_minutes: time.rest_minutes,
+      minutes_per_side: time.minutes_per_side,
+      technique,
+      total_with_rest_minutes: time.total_minutes + time.rest_minutes,
+      delay_from_first_minutes: 0,
+    });
+  }
+  if (items.length === 0) return [];
+  // O item mais demorado vai primeiro (delay = 0); os outros entram
+  // depois pra terminar junto.
+  items.sort((a, b) => b.total_with_rest_minutes - a.total_with_rest_minutes);
+  const longest = items[0].total_with_rest_minutes;
+  for (const item of items) {
+    item.delay_from_first_minutes = longest - item.total_with_rest_minutes;
+  }
+  return items;
+}
+
+function formatDelay(minutes: number, isPt: boolean): string {
+  if (minutes <= 0) return isPt ? 'Comece agora' : 'Start now';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return isPt ? `Daqui ${m} min` : `In ${m} min`;
+  if (m === 0) return isPt ? `Daqui ${h}h` : `In ${h}h`;
+  return isPt ? `Daqui ${h}h${String(m).padStart(2, '0')}` : `In ${h}h${String(m).padStart(2, '0')}`;
+}
+
+function formatDuration(minutes: number, isPt: boolean): string {
+  if (minutes < 60) return isPt ? `${minutes} min` : `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h${String(m).padStart(2, '0')}`;
+}
+
 export function CookingMode() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation(['common', 'barbecue', 'cooking']);
+  const { t, i18n } = useTranslation(['common', 'barbecue', 'cooking']);
+  const isPt = (i18n.resolvedLanguage ?? 'pt-BR') === 'pt-BR';
   const { data: bbq } = useBarbecue(id);
   const timers = useTimers((s) => s.timers);
 
   const calculation = useMemo(() => (bbq ? calcForBarbecue(bbq) : null), [bbq]);
+  const plan = useMemo(() => (calculation ? buildPlan(calculation.meats) : []), [calculation]);
 
   if (!bbq || !calculation) {
     return <div className="container mx-auto max-w-2xl px-4 py-8">{t('common:loading')}</div>;
   }
+
+  const aperitivos = calculation.meats.filter((m) => APERITIVO_IDS.has(m.cut_id));
+  const carnes = calculation.meats.filter(
+    (m) => !APERITIVO_IDS.has(m.cut_id) && !VEGETABLE_IDS.has(m.cut_id),
+  );
+  const legumes = calculation.meats.filter((m) => VEGETABLE_IDS.has(m.cut_id));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-cream to-amber-mid">
@@ -63,7 +166,9 @@ export function CookingMode() {
       <div className="container mx-auto max-w-2xl space-y-6 px-4 pb-16">
         {timers.length > 0 && (
           <section>
-            <h3 className="mb-3 text-stamp text-tomato-deep">Timers ativos</h3>
+            <h3 className="mb-3 text-stamp text-tomato-deep">
+              {isPt ? 'Timers ativos' : 'Active timers'}
+            </h3>
             <div className="grid gap-3">
               {timers.map((tmr) => (
                 <TimerCard key={tmr.id} timer={tmr} />
@@ -72,20 +177,165 @@ export function CookingMode() {
           </section>
         )}
 
-        <section>
-          <h3 className="mb-3 text-stamp text-tomato-deep">Carnes</h3>
-          <div className="grid gap-3">
-            {calculation.meats.map((m) => (
-              <CookingItem key={m.cut_id} cutId={m.cut_id} totalGrams={m.total_grams} />
-            ))}
-          </div>
-        </section>
+        {plan.length > 0 && <PlanCard plan={plan} isPt={isPt} />}
+
+        {aperitivos.length > 0 && (
+          <CategorySection
+            title={isPt ? 'Aperitivos' : 'Appetizers'}
+            iconColor="text-ember"
+            meats={aperitivos}
+            useVegetableIcon={false}
+          />
+        )}
+        {carnes.length > 0 && (
+          <CategorySection
+            title={isPt ? 'Carnes' : 'Meats'}
+            iconColor="text-tomato"
+            meats={carnes}
+            useVegetableIcon={false}
+          />
+        )}
+        {legumes.length > 0 && (
+          <CategorySection
+            title={isPt ? 'Legumes' : 'Vegetables'}
+            iconColor="text-olive-deep"
+            meats={legumes}
+            useVegetableIcon
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function CookingItem({ cutId, totalGrams }: { cutId: string; totalGrams: number }) {
+function PlanCard({ plan, isPt }: { plan: PlanItem[]; isPt: boolean }) {
+  const start = useTimers((s) => s.start);
+
+  const handleStart = (item: PlanItem) => {
+    const id = `${item.cut_id}-${Date.now()}`;
+    const sideMs = item.minutes_per_side * 60 * 1000;
+    start({
+      id,
+      cut_id: item.cut_id,
+      technique: item.technique,
+      doneness: DEFAULT_DONENESS,
+      thickness_cm: DEFAULT_THICKNESS_CM,
+      side_a_ms: sideMs,
+      side_b_ms: sideMs,
+      rest_ms: item.rest_minutes * 60 * 1000,
+    });
+  };
+
+  return (
+    <section>
+      <h3 className="mb-2 text-stamp text-tomato-deep">
+        {isPt ? 'Plano sugerido' : 'Suggested plan'}
+      </h3>
+      <Card className="p-4">
+        <div className="mb-3 flex items-start gap-2">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-tomato" />
+          <p className="text-xs text-ink/65">
+            {isPt
+              ? 'Os itens mais demorados entram primeiro pra todos ficarem prontos ao mesmo tempo. Comece pelo primeiro e siga a ordem.'
+              : 'Longer-cooking items go on first so everything finishes together. Start with the top one and follow the order.'}
+          </p>
+        </div>
+
+        <ol className="space-y-2">
+          {plan.map((item, idx) => {
+            const cut = findCutById(item.cut_id);
+            if (!cut) return null;
+            const isVeg = VEGETABLE_IDS.has(item.cut_id);
+            const isAperitivo = APERITIVO_IDS.has(item.cut_id);
+            return (
+              <li
+                key={item.cut_id}
+                className="flex items-center gap-3 rounded-xl bg-cream-paper p-3"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-tomato/15 text-xs font-semibold text-tomato-deep tabular-nums">
+                  {idx + 1}
+                </span>
+                <span className="shrink-0">
+                  {isVeg ? (
+                    <VegetableIcon vegetableId={item.cut_id} className="h-6 w-6 text-olive-deep" />
+                  ) : (
+                    <CutIcon
+                      cutId={item.cut_id}
+                      className={`h-6 w-6 ${isAperitivo ? 'text-ember' : 'text-tomato'}`}
+                    />
+                  )}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium leading-tight">
+                    {isPt ? cut.name_pt : cut.name_en}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-ink/55">
+                    <Clock className="h-3 w-3" />
+                    <span>
+                      {formatDelay(item.delay_from_first_minutes, isPt)}
+                      {' · '}
+                      {formatDuration(item.total_with_rest_minutes, isPt)}
+                    </span>
+                  </p>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => handleStart(item)}
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  {isPt ? 'Iniciar' : 'Start'}
+                </Button>
+              </li>
+            );
+          })}
+        </ol>
+      </Card>
+    </section>
+  );
+}
+
+function CategorySection({
+  title,
+  iconColor,
+  meats,
+  useVegetableIcon,
+}: {
+  title: string;
+  iconColor: string;
+  meats: { cut_id: string; total_grams: number }[];
+  useVegetableIcon: boolean;
+}) {
+  return (
+    <section>
+      <h3 className="mb-3 text-stamp text-tomato-deep">{title}</h3>
+      <div className="grid gap-3">
+        {meats.map((m) => (
+          <CookingItem
+            key={m.cut_id}
+            cutId={m.cut_id}
+            totalGrams={m.total_grams}
+            iconColor={iconColor}
+            useVegetableIcon={useVegetableIcon}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CookingItem({
+  cutId,
+  totalGrams,
+  iconColor,
+  useVegetableIcon,
+}: {
+  cutId: string;
+  totalGrams: number;
+  iconColor: string;
+  useVegetableIcon: boolean;
+}) {
   const { t, i18n } = useTranslation(['cooking']);
   const isPt = (i18n.resolvedLanguage ?? 'pt-BR') === 'pt-BR';
   const cut = findCutById(cutId);
@@ -93,8 +343,8 @@ function CookingItem({ cutId, totalGrams }: { cutId: string; totalGrams: number 
 
   const defaultTechnique = (cut?.techniques[0] ?? 'parrilla') as CookingTechnique;
   const [technique, setTechnique] = useState<CookingTechnique>(defaultTechnique);
-  const [doneness, setDoneness] = useState<Doneness>('ao_ponto');
-  const [thickness, setThickness] = useState(3);
+  const [doneness, setDoneness] = useState<Doneness>(DEFAULT_DONENESS);
+  const [thickness, setThickness] = useState(DEFAULT_THICKNESS_CM);
 
   if (!cut) return null;
 
@@ -119,14 +369,19 @@ function CookingItem({ cutId, totalGrams }: { cutId: string; totalGrams: number 
   return (
     <Card className="p-5">
       <CardHeader className="p-0 pb-4">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start gap-3">
+          <span className="shrink-0">
+            {useVegetableIcon ? (
+              <VegetableIcon vegetableId={cutId} className={`h-8 w-8 ${iconColor}`} />
+            ) : (
+              <CutIcon cutId={cutId} className={`h-8 w-8 ${iconColor}`} />
+            )}
+          </span>
+          <div className="flex-1 min-w-0">
             <CardTitle className="text-xl">{isPt ? cut.name_pt : cut.name_en}</CardTitle>
-            <p className="mt-1 text-xs text-ink/60">
-              {(totalGrams / 1000).toFixed(2)} kg
-            </p>
+            <p className="mt-1 text-xs text-ink/60">{(totalGrams / 1000).toFixed(2)} kg</p>
           </div>
-          <Badge className="text-stamp">{t(`cooking:techniques.${defaultTechnique}`)}</Badge>
+          <Badge className="shrink-0 text-stamp">{t(`cooking:techniques.${defaultTechnique}`)}</Badge>
         </div>
       </CardHeader>
 
