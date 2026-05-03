@@ -108,8 +108,40 @@ export function useDeleteBarbecue() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await getSupabase().from('barbecues').delete().eq('id', id);
-      if (error) throw error;
+      const supabase = getSupabase();
+
+      // Caminho preferido: RPC SECURITY DEFINER (migration 0004). Evita
+      // qualquer ciladinha de RLS no cascade das tabelas filhas. Se a
+      // function não existir no projeto (migração ainda não aplicada),
+      // caímos pro DELETE direto.
+      const { error: rpcError } = await supabase.rpc('delete_barbecue', {
+        barbecue_id: id,
+      });
+
+      if (rpcError) {
+        const msg = rpcError.message ?? '';
+        const fnMissing =
+          rpcError.code === 'PGRST202' ||
+          /function .*delete_barbecue/i.test(msg) ||
+          /could not find/i.test(msg);
+
+        if (!fnMissing) throw rpcError;
+
+        // Fallback: DELETE direto. `.select()` traz as linhas removidas,
+        // o que nos permite detectar quando a RLS bloqueia silenciosamente
+        // (zero linhas afetadas, sem erro).
+        const { data, error } = await supabase
+          .from('barbecues')
+          .delete()
+          .eq('id', id)
+          .select('id');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error(
+            'Não foi possível excluir o churrasco. Verifique se você é o anfitrião.',
+          );
+        }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.list }),
   });
