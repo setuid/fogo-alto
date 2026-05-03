@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Flame } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,11 +13,18 @@ import { toast } from '@/components/ui/sonner';
 
 export function AuthPage() {
   const { t } = useTranslation('common');
-  const { signInWithPassword, signUpWithPassword, signInWithMagicLink, configured } = useAuth();
+  const { user, signInWithPassword, signUpWithPassword, signInWithMagicLink, configured } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
+
+  // Quando a sessão chega (login com sucesso ou retorno do magic link),
+  // empurra pra rota protegida.
+  useEffect(() => {
+    if (user) navigate('/', { replace: true });
+  }, [user, navigate]);
 
   if (!configured) {
     return (
