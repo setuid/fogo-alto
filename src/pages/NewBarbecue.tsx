@@ -55,6 +55,12 @@ const MEAT_CUT_LIST = MEAT_CUTS.filter(
 );
 const VEGETABLE_LIST = MEAT_CUTS.filter((c) => VEGETABLE_IDS.has(c.id));
 const EXTRA_LIST = MEAT_CUTS.filter((c) => EXTRA_IDS.has(c.id));
+
+// Lista [min, min+1, …, max] usada nos selects de pessoas/bebedores.
+function countOptions(min: number, max: number): number[] {
+  const safeMax = Math.max(min, max);
+  return Array.from({ length: safeMax - min + 1 }, (_, i) => min + i);
+}
 import { useBarbecues, useCreateBarbecue, useDuplicateBarbecue } from '@/hooks/useBarbecue';
 import {
   calculate,
@@ -471,31 +477,61 @@ function Step2Style({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="adults">{t('fields.adults_count')}</Label>
-          <Input
-            id="adults"
-            type="number"
-            min={1}
-            value={v.adults_count}
-            onChange={(e) => onAdultsChange(Math.max(1, Number(e.target.value) || 1))}
-          />
+          <Select
+            value={String(v.adults_count ?? 5)}
+            onValueChange={(value) => onAdultsChange(Number(value))}
+          >
+            <SelectTrigger id="adults" className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {countOptions(1, 15).map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <FieldError message={form.formState.errors.adults_count?.message} />
         </div>
         <div>
           <Label htmlFor="children">{t('fields.children_count')}</Label>
-          <Input id="children" type="number" min={0} {...form.register('children_count')} />
+          <Select
+            value={String(v.children_count ?? 0)}
+            onValueChange={(value) => form.setValue('children_count', Number(value))}
+          >
+            <SelectTrigger id="children" className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {countOptions(0, 15).map((n) => (
+                <SelectItem key={n} value={String(n)}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="mt-1 text-xs text-ink/55">{t('fields_hints.children_count')}</p>
         </div>
       </div>
 
       <div>
         <Label htmlFor="drinkers">{t('fields.drinkers_count')}</Label>
-        <Input
-          id="drinkers"
-          type="number"
-          min={0}
-          max={v.adults_count}
-          {...form.register('drinkers_count')}
-        />
+        <Select
+          value={String(v.drinkers_count ?? 0)}
+          onValueChange={(value) => form.setValue('drinkers_count', Number(value))}
+        >
+          <SelectTrigger id="drinkers" className="mt-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {countOptions(0, v.adults_count ?? 15).map((n) => (
+              <SelectItem key={n} value={String(n)}>
+                {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="mt-1 text-xs text-ink/55">{t('fields_hints.drinkers_count')}</p>
         <FieldError message={form.formState.errors.drinkers_count?.message} />
       </div>

@@ -346,23 +346,40 @@ export function BarbecueEdit() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="adults">{t('barbecue:fields.adults_count')}</Label>
-                  <Input
-                    id="adults"
-                    type="number"
-                    min={1}
-                    value={v.adults_count ?? ''}
-                    onChange={(e) => onAdultsChange(Math.max(1, Number(e.target.value) || 1))}
-                  />
+                  <Select
+                    value={String(v.adults_count ?? 5)}
+                    onValueChange={(value) => onAdultsChange(Number(value))}
+                  >
+                    <SelectTrigger id="adults" className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countOptions(1, 15).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FieldError message={form.formState.errors.adults_count?.message} />
                 </div>
                 <div>
                   <Label htmlFor="children">{t('barbecue:fields.children_count')}</Label>
-                  <Input
-                    id="children"
-                    type="number"
-                    min={0}
-                    {...form.register('children_count')}
-                  />
+                  <Select
+                    value={String(v.children_count ?? 0)}
+                    onValueChange={(value) => form.setValue('children_count', Number(value))}
+                  >
+                    <SelectTrigger id="children" className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countOptions(0, 15).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="mt-1 text-xs text-ink/55">
                     {t('barbecue:fields_hints.children_count')}
                   </p>
@@ -371,13 +388,21 @@ export function BarbecueEdit() {
 
               <div>
                 <Label htmlFor="drinkers">{t('barbecue:fields.drinkers_count')}</Label>
-                <Input
-                  id="drinkers"
-                  type="number"
-                  min={0}
-                  max={v.adults_count}
-                  {...form.register('drinkers_count')}
-                />
+                <Select
+                  value={String(v.drinkers_count ?? 0)}
+                  onValueChange={(value) => form.setValue('drinkers_count', Number(value))}
+                >
+                  <SelectTrigger id="drinkers" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countOptions(0, v.adults_count ?? 15).map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <p className="mt-1 text-xs text-ink/55">
                   {t('barbecue:fields_hints.drinkers_count')}
                 </p>
@@ -574,6 +599,11 @@ export function BarbecueEdit() {
       </div>
     </>
   );
+}
+
+function countOptions(min: number, max: number): number[] {
+  const safeMax = Math.max(min, max);
+  return Array.from({ length: safeMax - min + 1 }, (_, i) => min + i);
 }
 
 function toLocalDateTime(iso: string): string {
