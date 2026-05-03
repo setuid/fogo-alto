@@ -9,6 +9,8 @@ import { DrinkRow } from '@/components/shared/DrinkRow';
 import { ShareLinkCard } from '@/components/shared/ShareLinkCard';
 import { CutIcon } from '@/components/icons/CutIcon';
 import { VegetableIcon } from '@/components/icons/VegetableIcon';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useShoppingChecks } from '@/stores/shoppingChecksStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,11 +84,13 @@ export function BarbecueDetail() {
   };
 
   const onShoppingListCopy = async () => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/g/${bbq.share_token}`;
     const text = buildShoppingListText({
       title: bbq.title,
       calculation,
       contributions: contributions ?? [],
       locale,
+      shareUrl,
     });
     try {
       await navigator.clipboard.writeText(text);
@@ -183,6 +187,7 @@ export function BarbecueDetail() {
 
           <TabsContent value="list">
             <ListTab
+              barbecueId={bbq.id}
               calculation={calculation}
               contributions={contributions ?? []}
               guests={guests ?? []}
@@ -371,11 +376,13 @@ function RsvpBadge({ status }: { status: GuestRow['rsvp_status'] }) {
 }
 
 function ListTab({
+  barbecueId,
   calculation,
   contributions,
   guests,
   locale,
 }: {
+  barbecueId: string;
   calculation: ReturnType<typeof calcForBarbecue>;
   contributions: ContributionRow[];
   guests: GuestRow[];
@@ -384,6 +391,9 @@ function ListTab({
   const isPt = locale === 'pt-BR';
   const [openRecipeId, setOpenRecipeId] = useState<string | null>(null);
   const recipe = openRecipeId ? findRecipeById(openRecipeId) : null;
+  const checked = useShoppingChecks((s) => s.checked[barbecueId] ?? []);
+  const toggle = useShoppingChecks((s) => s.toggle);
+  const isChecked = (key: string) => checked.includes(key);
 
   const guestNameById = (id: string) => guests.find((g) => g.id === id)?.name ?? '—';
 
@@ -405,12 +415,20 @@ function ListTab({
               const pieceLabel = cut ? (isPt ? cut.piece_label_pt : cut.piece_label_en) : 'peça';
               const labelPlural = m.pieces > 1 ? `${pieceLabel}s` : pieceLabel;
               const isVeg = cut?.category === 'vegetais';
+              const key = `meat:${m.cut_id}`;
+              const done = isChecked(key);
               return (
                 <li
                   key={m.cut_id}
-                  className="group relative flex items-center gap-3 py-3 text-sm"
+                  className={`group relative flex items-center gap-3 py-3 text-sm transition-opacity ${
+                    done ? 'opacity-50' : ''
+                  }`}
                 >
-                  <span className="absolute -left-3 top-1/2 hidden h-8 w-1 -translate-y-1/2 bg-gradient-to-b from-tomato to-tomato-deep group-hover:block" />
+                  <Checkbox
+                    checked={done}
+                    onCheckedChange={() => toggle(barbecueId, key)}
+                    className="shrink-0"
+                  />
                   <span className="shrink-0">
                     {isVeg ? (
                       <VegetableIcon vegetableId={m.cut_id} className="h-6 w-6 text-olive-deep" />
@@ -418,13 +436,15 @@ function ListTab({
                       <CutIcon cutId={m.cut_id} className="h-6 w-6 text-tomato" />
                     )}
                   </span>
-                  <span className="flex-1">
+                  <span className={`flex-1 ${done ? 'line-through' : ''}`}>
                     <span className="font-medium">
                       {m.pieces}× {cut ? (isPt ? cut.name_pt : cut.name_en) : m.cut_id}
                     </span>
                     <span className="ml-2 text-xs text-ink/55">{labelPlural}</span>
                   </span>
-                  <span className="text-ink/65">{formatGrams(m.total_grams, locale)}</span>
+                  <span className={`text-ink/65 ${done ? 'line-through' : ''}`}>
+                    {formatGrams(m.total_grams, locale)}
+                  </span>
                 </li>
               );
             })}
@@ -443,10 +463,27 @@ function ListTab({
         </CardHeader>
         <CardContent>
           <ul className="divide-y divide-ink/10">
-            {calculation.drinks.map((d) => (
-              <li key={d.type} className="py-3 text-sm">
-                <DrinkRow drink={d} /></li>
-            ))}
+            {calculation.drinks.map((d) => {
+              const key = `drink:${d.type}`;
+              const done = isChecked(key);
+              return (
+                <li
+                  key={d.type}
+                  className={`flex items-center gap-3 py-3 text-sm transition-opacity ${
+                    done ? 'opacity-50' : ''
+                  }`}
+                >
+                  <Checkbox
+                    checked={done}
+                    onCheckedChange={() => toggle(barbecueId, key)}
+                    className="shrink-0"
+                  />
+                  <div className={`flex-1 ${done ? 'line-through' : ''}`}>
+                    <DrinkRow drink={d} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </CardContent>
       </Card>
@@ -466,13 +503,27 @@ function ListTab({
             <ul className="divide-y divide-ink/10">
               {calculation.sides.map((s) => {
                 const recipeAvailable = !!findRecipeById(s.id);
+                const key = `side:${s.id}`;
+                const done = isChecked(key);
                 return (
-                  <li key={s.id} className="flex items-center justify-between py-3 text-sm">
-                    <span className="font-medium">
+                  <li
+                    key={s.id}
+                    className={`flex items-center gap-3 py-3 text-sm transition-opacity ${
+                      done ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <Checkbox
+                      checked={done}
+                      onCheckedChange={() => toggle(barbecueId, key)}
+                      className="shrink-0"
+                    />
+                    <span className={`flex-1 font-medium ${done ? 'line-through' : ''}`}>
                       {s.pieces}× {isPt ? s.name_pt : s.name_en}
                     </span>
                     <span className="flex items-center gap-2">
-                      <span className="text-ink/65">{formatGrams(s.total_grams, locale)}</span>
+                      <span className={`text-ink/65 ${done ? 'line-through' : ''}`}>
+                        {formatGrams(s.total_grams, locale)}
+                      </span>
                       {recipeAvailable && (
                         <Button
                           variant="link"
