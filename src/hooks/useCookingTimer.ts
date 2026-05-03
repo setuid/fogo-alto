@@ -10,8 +10,7 @@ export interface TimerProgress {
 
 export function useTimerProgress(timerId: string): TimerProgress | null {
   const timers = useTimers((s) => s.timers);
-  const advanceToRest = useTimers((s) => s.advanceToRest);
-  const markDone = useTimers((s) => s.markDone);
+  const advance = useTimers((s) => s.advance);
   const timer = timers.find((t) => t.id === timerId);
   const [, force] = useState(0);
 
@@ -26,14 +25,9 @@ export function useTimerProgress(timerId: string): TimerProgress | null {
     if (timer.phase === 'done') return;
     const remaining = timer.started_at + timer.duration_ms - Date.now();
     if (remaining <= 0) {
-      // Beep + vibração quando o timer expira.
       void playBeep();
       if ('vibrate' in navigator) navigator.vibrate?.([200, 100, 200]);
-      if (timer.phase === 'cooking' && timer.rest_ms > 0) {
-        advanceToRest(timer.id);
-      } else {
-        markDone(timer.id);
-      }
+      advance(timer.id);
     }
   });
 

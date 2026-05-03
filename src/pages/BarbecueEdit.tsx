@@ -625,13 +625,13 @@ function CutGroup({
           return (
             <div
               key={cut.id}
-              className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+              className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
                 n > 0
                   ? 'border-tomato bg-tomato/5'
                   : 'border-ink/10 bg-cream-paper hover:border-ink/20'
               }`}
             >
-              <span className="shrink-0">
+              <span className="shrink-0 mt-0.5">
                 {useVegetableIcon ? (
                   <VegetableIcon vegetableId={cut.id} className={`h-7 w-7 ${iconColor}`} />
                 ) : (
@@ -639,15 +639,24 @@ function CutGroup({
                 )}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="truncate font-medium">{cut.name_pt}</p>
-                <p className="truncate text-xs text-ink/55">
+                <p className="font-medium leading-tight break-words">{cut.name_pt}</p>
+                <p className="mt-0.5 text-xs text-ink/55">
                   1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
+                  {n > 0 && (
+                    <>
+                      {' · '}
+                      <span className="font-medium text-tomato-deep tabular-nums">
+                        {formatGrams(subtotal)}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
-              <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
-                {n > 0 ? formatGrams(subtotal) : '—'}
-              </span>
-              <QuantityStepper value={n} onChange={(next) => onChange(cut.id, next)} />
+              <QuantityStepper
+                value={n}
+                onChange={(next) => onChange(cut.id, next)}
+                className="shrink-0"
+              />
             </div>
           );
         })}

@@ -1,5 +1,4 @@
 // Geração de lista de compras consolidada (texto pronto pra WhatsApp).
-// PDF é feito via `window.print()` sobre um layout dedicado.
 
 import { findCutById } from '@/data/catalog';
 import type { CalculationOutput } from '@/lib/calculator';
@@ -10,8 +9,10 @@ export function buildShoppingListText(opts: {
   calculation: CalculationOutput;
   contributions: ContributionRow[];
   locale: 'pt-BR' | 'en';
+  // Link público (com share_token) pra compartilhar com convidados.
+  shareUrl?: string;
 }): string {
-  const { title, calculation, contributions, locale } = opts;
+  const { title, calculation, contributions, locale, shareUrl } = opts;
   const isPt = locale === 'pt-BR';
   const lines: string[] = [];
   lines.push(isPt ? `🔥 Lista de compras — ${title}` : `🔥 Shopping list — ${title}`);
@@ -30,11 +31,13 @@ export function buildShoppingListText(opts: {
   lines.push('');
   lines.push(isPt ? '— Bebidas' : '— Drinks');
   for (const drink of calculation.drinks) {
-    const qty =
-      drink.unit === 'ml'
-        ? `${(drink.total_ml_or_units / 1000).toFixed(1)} L`
-        : `${drink.total_ml_or_units}`;
-    lines.push(`• ${drink.type} — ${qty}`);
+    const detail =
+      drink.bottles && drink.bottle_label_pt
+        ? `${drink.bottles} ${drink.bottle_label_pt}`
+        : drink.unit === 'ml'
+          ? `${(drink.total_ml_or_units / 1000).toFixed(1)} L`
+          : `${drink.total_ml_or_units}`;
+    lines.push(`• ${drink.type} — ${detail}`);
   }
 
   if (calculation.sides.length > 0) {
@@ -54,6 +57,12 @@ export function buildShoppingListText(opts: {
       const qty = c.quantity_description ? ` (${c.quantity_description})` : '';
       lines.push(`• ${c.item_name}${qty}`);
     }
+  }
+
+  if (shareUrl) {
+    lines.push('');
+    lines.push(isPt ? '— Link mágico (RSVP & contribuições)' : '— Magic link (RSVP & contributions)');
+    lines.push(shareUrl);
   }
 
   return lines.join('\n');

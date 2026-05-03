@@ -43,13 +43,50 @@ export interface DrinkCalculation {
 }
 
 // Tamanho típico de garrafa por tipo de bebida no varejo brasileiro.
+// `sing/plur` evitam o bug de pluralização (`garrafa de 1.5Ls`).
 const BOTTLE_SIZES = {
-  cerveja: { ml: 355, label_pt: 'long neck', label_en: 'long neck' },
-  vinho_tinto: { ml: 750, label_pt: 'garrafa', label_en: 'bottle' },
-  caipirinha: { ml: 700, label_pt: 'garrafa de cachaça', label_en: 'cachaça bottle' },
-  refrigerante: { ml: 2000, label_pt: 'garrafa de 2L', label_en: '2L bottle' },
-  suco: { ml: 1000, label_pt: 'caixa de 1L', label_en: '1L carton' },
-  agua: { ml: 1500, label_pt: 'garrafa de 1.5L', label_en: '1.5L bottle' },
+  cerveja: {
+    ml: 355,
+    sing_pt: 'long neck',
+    plur_pt: 'long necks',
+    sing_en: 'long neck',
+    plur_en: 'long necks',
+  },
+  vinho_tinto: {
+    ml: 750,
+    sing_pt: 'garrafa',
+    plur_pt: 'garrafas',
+    sing_en: 'bottle',
+    plur_en: 'bottles',
+  },
+  caipirinha: {
+    ml: 700,
+    sing_pt: 'garrafa de cachaça',
+    plur_pt: 'garrafas de cachaça',
+    sing_en: 'cachaça bottle',
+    plur_en: 'cachaça bottles',
+  },
+  refrigerante: {
+    ml: 2000,
+    sing_pt: 'garrafa',
+    plur_pt: 'garrafas',
+    sing_en: 'bottle',
+    plur_en: 'bottles',
+  },
+  suco: {
+    ml: 1000,
+    sing_pt: 'caixa',
+    plur_pt: 'caixas',
+    sing_en: 'carton',
+    plur_en: 'cartons',
+  },
+  agua: {
+    ml: 1500,
+    sing_pt: 'garrafa',
+    plur_pt: 'garrafas',
+    sing_en: 'bottle',
+    plur_en: 'bottles',
+  },
 } as const;
 
 // Caipirinha usa ~50 ml de cachaça por dose, mais limão/açúcar à parte.
@@ -164,11 +201,12 @@ function bottlesFor(type: keyof typeof BOTTLE_SIZES, totalMl: number): {
   bottle_label_en: string;
 } {
   const meta = BOTTLE_SIZES[type];
+  const count = Math.ceil(totalMl / meta.ml);
   return {
-    bottles: Math.ceil(totalMl / meta.ml),
+    bottles: count,
     bottle_size_ml: meta.ml,
-    bottle_label_pt: meta.label_pt,
-    bottle_label_en: meta.label_en,
+    bottle_label_pt: count === 1 ? meta.sing_pt : meta.plur_pt,
+    bottle_label_en: count === 1 ? meta.sing_en : meta.plur_en,
   };
 }
 

@@ -103,13 +103,15 @@ function CookingItem({ cutId, totalGrams }: { cutId: string; totalGrams: number 
   const handleStart = () => {
     if (!time) return;
     const id = `${cutId}-${Date.now()}`;
+    const sideMs = time.minutes_per_side * 60 * 1000;
     start({
       id,
       cut_id: cutId,
       technique,
       doneness,
       thickness_cm: thickness,
-      duration_ms: time.total_minutes * 60 * 1000,
+      side_a_ms: sideMs,
+      side_b_ms: sideMs,
       rest_ms: time.rest_minutes * 60 * 1000,
     });
   };

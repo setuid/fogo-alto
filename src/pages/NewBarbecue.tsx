@@ -301,13 +301,7 @@ export function NewBarbecue() {
               />
             )}
 
-            {step === 3 && (
-              <ReviewStep
-                values={v}
-                onCreate={() => void onSubmit()}
-                creating={createMutation.isPending}
-              />
-            )}
+            {step === 3 && <ReviewStep values={v} />}
           </CardContent>
         </Card>
 
@@ -516,6 +510,8 @@ function Step2Style({
       <SuggestionBanner
         adults={v.adults_count ?? 1}
         children={v.children_count ?? 0}
+        drinkers={v.drinkers_count ?? 0}
+        durationHours={v.duration_hours ?? 5}
         weightProfile={v.weight_profile}
         style={v.style}
       />
@@ -526,11 +522,15 @@ function Step2Style({
 function SuggestionBanner({
   adults,
   children,
+  drinkers,
+  durationHours,
   weightProfile,
   style,
 }: {
   adults: number;
   children: number;
+  drinkers: number;
+  durationHours: number;
   weightProfile: WeightProfile;
   style: BarbecueStyle;
 }) {
@@ -538,6 +538,14 @@ function SuggestionBanner({
   const sidesKg = suggestedSidesGrams(adults, children) / 1000;
   const audience =
     children > 0 ? `${adults} adulto(s) + ${children} criança(s)` : `${adults} adulto(s)`;
+
+  // Estimativas pra abertura (na hora de comprar). Quantidades calibradas
+  // pra ninguém ficar bêbado nem ressacado: 250 ml de vinho/pessoa por
+  // evento, 500 ml de cerveja/hora — limites já usados pelo engine.
+  const wineMl = drinkers * 250;
+  const wineBottles = wineMl > 0 ? Math.ceil(wineMl / 750) : 0;
+  const beerMl = drinkers * 500 * durationHours;
+  const beerLongNecks = beerMl > 0 ? Math.ceil(beerMl / 355) : 0;
 
   return (
     <div className="rounded-2xl border border-tomato/20 bg-gradient-to-br from-cream-paper to-cream-warm p-4 shadow-card">
@@ -556,7 +564,28 @@ function SuggestionBanner({
             {sidesKg.toFixed(1)} kg
           </span>
         </div>
+        {drinkers > 0 && (
+          <>
+            <div className="flex items-baseline justify-between">
+              <span>Vinho</span>
+              <span className="font-semibold tabular-nums text-tomato-deep">
+                {wineBottles} {wineBottles === 1 ? 'garrafa' : 'garrafas'}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between">
+              <span>Cerveja</span>
+              <span className="font-semibold tabular-nums text-tomato-deep">
+                {beerLongNecks} long {beerLongNecks === 1 ? 'neck' : 'necks'}
+              </span>
+            </div>
+          </>
+        )}
       </div>
+      {drinkers > 0 && (
+        <p className="mt-3 text-xs text-ink/55">
+          Estimativa pra {drinkers} bebedor(es) em {durationHours}h — calibrado pra ninguém ficar bêbado.
+        </p>
+      )}
     </div>
   );
 }
@@ -761,36 +790,33 @@ function CutRow({
   const subtotal = quantity * cut.typical_piece_kg * 1000;
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+      className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
         quantity > 0
           ? 'border-tomato bg-tomato/5'
           : 'border-ink/10 bg-cream-paper hover:border-ink/20'
       }`}
     >
-      <span className="shrink-0">{icon}</span>
+      <span className="shrink-0 mt-0.5">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="truncate font-medium">{cut.name_pt}</p>
-        <p className="truncate text-xs text-ink/55">
+        <p className="font-medium leading-tight break-words">{cut.name_pt}</p>
+        <p className="mt-0.5 text-xs text-ink/55">
           1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
+          {quantity > 0 && (
+            <>
+              {' · '}
+              <span className="font-medium text-tomato-deep tabular-nums">
+                {formatGrams(subtotal)}
+              </span>
+            </>
+          )}
         </p>
       </div>
-      <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
-        {quantity > 0 ? formatGrams(subtotal) : '—'}
-      </span>
-      <QuantityStepper value={quantity} onChange={onChange} />
+      <QuantityStepper value={quantity} onChange={onChange} className="shrink-0" />
     </div>
   );
 }
 
-function ReviewStep({
-  values,
-  onCreate,
-  creating,
-}: {
-  values: FormValues;
-  onCreate: () => void;
-  creating: boolean;
-}) {
+function ReviewStep({ values }: { values: FormValues }) {
   // Reusa o calculator pra exibir o que ficaria de bebidas/sides em peças.
   const fakeRow = {
     id: 'preview',
@@ -890,11 +916,6 @@ function ReviewStep({
           ))}
         </CardContent>
       </Card>
-
-      <Button variant="cta" size="xl" className="w-full" onClick={onCreate} disabled={creating}>
-        <Sparkles className="h-4 w-4" />
-        {creating ? 'Criando…' : 'Criar churrasco'}
-      </Button>
     </div>
   );
 }
