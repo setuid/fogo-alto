@@ -13,7 +13,7 @@ import { toast } from '@/components/ui/sonner';
 
 export function AuthPage() {
   const { t } = useTranslation('common');
-  const { user, signInWithPassword, signUpWithPassword, signInWithMagicLink, configured } = useAuth();
+  const { user, signInWithPassword, signInWithMagicLink, configured } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,15 +56,11 @@ export function AuthPage() {
     }
   };
 
-  const onPassword = async (e: React.FormEvent, mode: 'sign-in' | 'sign-up') => {
+  const onPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === 'sign-in') await signInWithPassword(email, password);
-      else {
-        await signUpWithPassword(email, password);
-        toast.success('Conta criada — verifique seu e-mail se houver confirmação.');
-      }
+      await signInWithPassword(email, password);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('error_generic'));
     } finally {
@@ -129,7 +125,7 @@ export function AuthPage() {
             </TabsContent>
 
             <TabsContent value="password">
-              <form className="space-y-4" onSubmit={(e) => onPassword(e, 'sign-in')}>
+              <form className="space-y-4" onSubmit={onPassword}>
                 <div>
                   <Label htmlFor="email-pw">E-mail</Label>
                   <Input
@@ -151,20 +147,9 @@ export function AuthPage() {
                     minLength={6}
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={loading} className="flex-1">
-                    {loading ? t('loading') : 'Entrar'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={loading}
-                    onClick={(e) => onPassword(e as unknown as React.FormEvent, 'sign-up')}
-                    className="flex-1"
-                  >
-                    Criar conta
-                  </Button>
-                </div>
+                <Button type="submit" disabled={loading} className="w-full">
+                  {loading ? t('loading') : 'Entrar'}
+                </Button>
               </form>
             </TabsContent>
           </Tabs>
