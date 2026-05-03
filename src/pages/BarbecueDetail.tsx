@@ -56,9 +56,13 @@ export function BarbecueDetail() {
   const onDelete = async () => {
     try {
       await deleteMutation.mutateAsync(bbq.id);
+      setConfirmDelete(false);
       toast.success('Churrasco excluído.');
       navigate('/');
     } catch (e) {
+      // Mantém o dialog aberto se houver erro? Não — fecha pra deixar o
+      // toast visível e permitir nova tentativa pelo botão da lista.
+      setConfirmDelete(false);
       toast.error(e instanceof Error ? e.message : t('common:error_generic'));
     }
   };
@@ -202,7 +206,14 @@ export function BarbecueDetail() {
         </Tabs>
       </div>
 
-      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={(o) => {
+          // Trava o fechamento por click-fora enquanto o delete está em curso.
+          if (deleteMutation.isPending) return;
+          setConfirmDelete(o);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir churrasco?</DialogTitle>
@@ -211,11 +222,19 @@ export function BarbecueDetail() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleteMutation.isPending}
+            >
               {t('common:actions.cancel')}
             </Button>
-            <Button variant="destructive" onClick={() => void onDelete()}>
-              {t('common:actions.delete')}
+            <Button
+              variant="destructive"
+              onClick={() => void onDelete()}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Excluindo…' : t('common:actions.delete')}
             </Button>
           </div>
         </DialogContent>
