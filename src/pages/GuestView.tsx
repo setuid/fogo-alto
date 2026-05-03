@@ -63,19 +63,38 @@ export function GuestView() {
       toast.error('Coloca seu nome pra confirmar.');
       return;
     }
-    try {
-      const res = await upsert.mutateAsync({
+    const submit = (gToken: string | undefined) =>
+      upsert.mutateAsync({
         share_token: shareToken,
-        guest_token: guestToken ?? undefined,
+        guest_token: gToken ?? undefined,
         name,
         email: email || undefined,
         rsvp_status: rsvp,
         drinks_alcohol: drinksAlcohol,
       });
+
+    try {
+      const res = await submit(guestToken ?? undefined);
       setGuestToken(res.guest_token);
       toast.success(t('guest:saved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('common:error_generic'));
+      const msg = extractErrorMessage(err, t('common:error_generic'));
+
+      // Token armazenado em localStorage está órfão (banco resetou ou
+      // convidado foi removido). Tenta de novo como convidado novo.
+      if (guestToken && /invalid guest token/i.test(msg)) {
+        try {
+          setGuestToken(null);
+          const res = await submit(undefined);
+          setGuestToken(res.guest_token);
+          toast.success(t('guest:saved'));
+          return;
+        } catch (retryErr) {
+          toast.error(extractErrorMessage(retryErr, t('common:error_generic')));
+          return;
+        }
+      }
+      toast.error(msg);
     }
   };
 
@@ -97,7 +116,7 @@ export function GuestView() {
       setQuantity('');
       toast.success('Oferta registrada.');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('common:error_generic'));
+      toast.error(extractErrorMessage(err, t('common:error_generic')));
     }
   };
 
@@ -322,4 +341,16 @@ function ErrorShell({ message }: { message: string }) {
       </Card>
     </div>
   );
+}
+
+// Extrai uma mensagem legível de qualquer formato de erro (Error,
+// PostgrestError, objeto solto). Sem isso o toast caía sempre no
+// fallback genérico "Algo deu errado".
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === 'string' && m.length > 0) return m;
+  }
+  return fallback;
 }

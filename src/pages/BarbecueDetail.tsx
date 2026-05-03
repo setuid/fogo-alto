@@ -397,6 +397,81 @@ function ListTab({
 
   const guestNameById = (id: string) => guests.find((g) => g.id === id)?.name ?? '—';
 
+  // Mesmos buckets do wizard step 3 — ordem visual consistente.
+  const APERITIVO_IDS = new Set([
+    'linguica',
+    'salsichao',
+    'asinha_frango',
+    'coracao_frango',
+    'sobrecoxa_frango',
+    'queijo_coalho',
+    'pao_alho',
+    'abacaxi',
+  ]);
+  const VEGETABLE_IDS = new Set([
+    'cenoura',
+    'palmito_pupunha',
+    'batata',
+    'cebola',
+    'tomate',
+    'pimentao_vermelho',
+    'pimentao_amarelo',
+    'pimentao_verde',
+    'aspargos',
+    'abobrinha',
+    'berinjela',
+    'cogumelo',
+  ]);
+
+  const aperitivos = calculation.meats.filter((m) => APERITIVO_IDS.has(m.cut_id));
+  const carnes = calculation.meats.filter(
+    (m) => !APERITIVO_IDS.has(m.cut_id) && !VEGETABLE_IDS.has(m.cut_id),
+  );
+  const legumes = calculation.meats.filter((m) => VEGETABLE_IDS.has(m.cut_id));
+
+  const renderMeatItem = (m: (typeof calculation.meats)[number]) => {
+    const cut = findCutById(m.cut_id);
+    const pieceLabel = cut ? (isPt ? cut.piece_label_pt : cut.piece_label_en) : 'peça';
+    const labelPlural = m.pieces > 1 ? `${pieceLabel}s` : pieceLabel;
+    const isVeg = VEGETABLE_IDS.has(m.cut_id);
+    const isAperitivo = APERITIVO_IDS.has(m.cut_id);
+    const key = `meat:${m.cut_id}`;
+    const done = isChecked(key);
+    return (
+      <li
+        key={m.cut_id}
+        className={`flex items-center gap-3 py-3 text-sm transition-opacity ${
+          done ? 'opacity-50' : ''
+        }`}
+      >
+        <Checkbox
+          checked={done}
+          onCheckedChange={() => toggle(barbecueId, key)}
+          className="shrink-0"
+        />
+        <span className="shrink-0">
+          {isVeg ? (
+            <VegetableIcon vegetableId={m.cut_id} className="h-6 w-6 text-olive-deep" />
+          ) : (
+            <CutIcon
+              cutId={m.cut_id}
+              className={`h-6 w-6 ${isAperitivo ? 'text-ember' : 'text-tomato'}`}
+            />
+          )}
+        </span>
+        <span className={`flex-1 min-w-0 ${done ? 'line-through' : ''}`}>
+          <span className="font-medium">
+            {m.pieces}× {cut ? (isPt ? cut.name_pt : cut.name_en) : m.cut_id}
+          </span>
+          <span className="ml-2 text-xs text-ink/55">{labelPlural}</span>
+        </span>
+        <span className={`shrink-0 text-ink/65 tabular-nums ${done ? 'line-through' : ''}`}>
+          {formatGrams(m.total_grams, locale)}
+        </span>
+      </li>
+    );
+  };
+
   return (
     <div className="grid gap-4">
       <BudgetTracker
@@ -404,58 +479,49 @@ function ListTab({
         targetGrams={calculation.meta.target_meat_grams}
         selectedGrams={calculation.meta.selected_meat_grams}
       />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{isPt ? 'Carnes & extras' : 'Meats & extras'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="divide-y divide-ink/10">
-            {calculation.meats.map((m) => {
-              const cut = findCutById(m.cut_id);
-              const pieceLabel = cut ? (isPt ? cut.piece_label_pt : cut.piece_label_en) : 'peça';
-              const labelPlural = m.pieces > 1 ? `${pieceLabel}s` : pieceLabel;
-              const isVeg = cut?.category === 'vegetais';
-              const key = `meat:${m.cut_id}`;
-              const done = isChecked(key);
-              return (
-                <li
-                  key={m.cut_id}
-                  className={`group relative flex items-center gap-3 py-3 text-sm transition-opacity ${
-                    done ? 'opacity-50' : ''
-                  }`}
-                >
-                  <Checkbox
-                    checked={done}
-                    onCheckedChange={() => toggle(barbecueId, key)}
-                    className="shrink-0"
-                  />
-                  <span className="shrink-0">
-                    {isVeg ? (
-                      <VegetableIcon vegetableId={m.cut_id} className="h-6 w-6 text-olive-deep" />
-                    ) : (
-                      <CutIcon cutId={m.cut_id} className="h-6 w-6 text-tomato" />
-                    )}
-                  </span>
-                  <span className={`flex-1 ${done ? 'line-through' : ''}`}>
-                    <span className="font-medium">
-                      {m.pieces}× {cut ? (isPt ? cut.name_pt : cut.name_en) : m.cut_id}
-                    </span>
-                    <span className="ml-2 text-xs text-ink/55">{labelPlural}</span>
-                  </span>
-                  <span className={`text-ink/65 ${done ? 'line-through' : ''}`}>
-                    {formatGrams(m.total_grams, locale)}
-                  </span>
-                </li>
-              );
-            })}
-            {calculation.meats.length === 0 && (
-              <li className="py-3 text-sm text-ink/55">
-                {isPt ? 'Nenhuma carne selecionada.' : 'No meat selected.'}
-              </li>
-            )}
-          </ul>
-        </CardContent>
-      </Card>
+
+      {aperitivos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{isPt ? 'Aperitivos' : 'Appetizers'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-ink/10">{aperitivos.map(renderMeatItem)}</ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {carnes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{isPt ? 'Carnes' : 'Meats'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-ink/10">{carnes.map(renderMeatItem)}</ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {legumes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {isPt ? 'Legumes pra grelhar' : 'Vegetables to grill'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-ink/10">{legumes.map(renderMeatItem)}</ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {calculation.meats.length === 0 && (
+        <Card>
+          <CardContent className="p-6 text-sm text-ink/55">
+            {isPt ? 'Nenhum item selecionado.' : 'Nothing selected.'}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
