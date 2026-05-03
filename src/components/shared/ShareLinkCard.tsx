@@ -33,10 +33,13 @@ export function ShareLinkCard({ shareToken }: { shareToken: string }) {
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2">
-          <code className="block flex-1 truncate rounded-xl bg-ink/5 px-3 py-2 text-xs text-ink/70">
+          {/* min-w-0 é essencial: sem isso, o flex-1 deixa o code esticar
+              à medida que precisa, empurrando a viewport e quebrando o
+              layout responsivo. */}
+          <code className="block flex-1 min-w-0 truncate rounded-xl bg-ink/5 px-3 py-2 text-xs text-ink/70">
             {url}
           </code>
-          <Button onClick={copy} variant="default" size="default">
+          <Button onClick={copy} variant="default" size="default" className="shrink-0">
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             <span className="hidden sm:inline">{t('barbecue:share.copy_link')}</span>
           </Button>

@@ -41,8 +41,11 @@ void i18n
     ns: ['common', 'barbecue', 'cooking', 'guest', 'catalog'],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
+    // Sem 'navigator' na ordem: se o usuário ainda não escolheu nada,
+    // o app abre em pt-BR (fallbackLng) em vez de seguir o idioma do
+    // sistema. Quem quiser EN usa o toggle no header — fica salvo.
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       lookupLocalStorage: 'fogo-alto.language',
       caches: ['localStorage'],
     },
