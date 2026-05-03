@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -96,7 +95,6 @@ const quantitiesSchema = z.record(z.string(), z.coerce.number().int().min(0).max
 const schema = z
   .object({
     title: z.string().min(2, { message: 'O título precisa de pelo menos 2 caracteres.' }),
-    description: z.string().optional(),
     event_date: z.string().min(1, { message: 'Escolha a data e a hora do churrasco.' }),
     location: z.string().optional(),
     style: z.enum(['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto']),
@@ -154,7 +152,6 @@ export function NewBarbecue() {
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
-      description: '',
       event_date: '',
       location: '',
       style: defaultStyle,
@@ -226,7 +223,6 @@ export function NewBarbecue() {
       try {
         const created = await createMutation.mutateAsync({
           title: values.title,
-          description: values.description,
           event_date: new Date(values.event_date).toISOString(),
           location: values.location,
           style: values.style,
@@ -379,10 +375,6 @@ function Step1Basic({
           placeholder="Casa do João, rua…"
           {...form.register('location')}
         />
-      </div>
-      <div>
-        <Label htmlFor="description">{t('fields.description')}</Label>
-        <Textarea id="description" {...form.register('description')} />
       </div>
       <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
     </form>
@@ -805,7 +797,7 @@ function ReviewStep({
     host_id: '',
     share_token: '',
     title: values.title,
-    description: values.description ?? null,
+    description: null,
     event_date: values.event_date || new Date().toISOString(),
     location: values.location ?? null,
     style: values.style,

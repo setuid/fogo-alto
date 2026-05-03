@@ -69,7 +69,6 @@ const quantitiesSchema = z.record(z.string(), z.coerce.number().int().min(0).max
 const schema = z
   .object({
     title: z.string().min(2, { message: 'O título precisa de pelo menos 2 caracteres.' }),
-    description: z.string().optional(),
     event_date: z.string().min(1, { message: 'Escolha a data e a hora do churrasco.' }),
     location: z.string().optional(),
     style: z.enum(['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto']),
@@ -155,7 +154,6 @@ export function BarbecueEdit() {
 
     form.reset({
       title: bbq.title,
-      description: bbq.description ?? '',
       event_date: toLocalDateTime(bbq.event_date),
       location: bbq.location ?? '',
       style: bbq.style,
@@ -218,7 +216,6 @@ export function BarbecueEdit() {
       try {
         await update.mutateAsync({
           title: values.title,
-          description: values.description ?? null,
           event_date: new Date(values.event_date).toISOString(),
           location: values.location ?? null,
           style: values.style,
@@ -317,10 +314,6 @@ export function BarbecueEdit() {
                   <Label htmlFor="location">{t('barbecue:fields.location')}</Label>
                   <Input id="location" {...form.register('location')} />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="description">{t('barbecue:fields.description')}</Label>
-                <Textarea id="description" {...form.register('description')} />
               </div>
             </CardContent>
           </Card>
