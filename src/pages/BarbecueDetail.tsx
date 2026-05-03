@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Calendar, ChefHat, Edit, Flame, MapPin, Trash2, Users } from 'lucide-react';
 
 import { AppHeader } from '@/components/shared/AppHeader';
+import { BudgetTracker } from '@/components/shared/BudgetTracker';
 import { ShareLinkCard } from '@/components/shared/ShareLinkCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -385,32 +386,42 @@ function ListTab({
 
   return (
     <div className="grid gap-4">
+      <BudgetTracker
+        label={isPt ? 'Carnes' : 'Meats'}
+        targetGrams={calculation.meta.target_meat_grams}
+        selectedGrams={calculation.meta.selected_meat_grams}
+      />
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Carnes</CardTitle>
+          <CardTitle className="text-lg">{isPt ? 'Carnes' : 'Meats'}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="divide-y divide-ink/10">
             {calculation.meats.map((m) => {
               const cut = findCutById(m.cut_id);
+              const pieceLabel = cut ? (isPt ? cut.piece_label_pt : cut.piece_label_en) : 'peça';
+              const labelPlural = m.pieces > 1 ? `${pieceLabel}s` : pieceLabel;
               return (
                 <li
                   key={m.cut_id}
                   className="group relative flex items-center justify-between gap-3 py-3 text-sm"
                 >
                   <span className="absolute -left-3 top-1/2 hidden h-8 w-1 -translate-y-1/2 bg-gradient-to-b from-tomato to-tomato-deep group-hover:block" />
-                  <span>{cut ? (isPt ? cut.name_pt : cut.name_en) : m.cut_id}</span>
-                  <span className="flex items-center gap-2">
-                    <Badge variant="default" className="text-stamp">
-                      Calculado
-                    </Badge>
-                    <span className="text-ink/65">
-                      {formatGrams(m.total_grams, locale)}
+                  <span>
+                    <span className="font-medium">
+                      {m.pieces}× {cut ? (isPt ? cut.name_pt : cut.name_en) : m.cut_id}
                     </span>
+                    <span className="ml-2 text-xs text-ink/55">{labelPlural}</span>
                   </span>
+                  <span className="text-ink/65">{formatGrams(m.total_grams, locale)}</span>
                 </li>
               );
             })}
+            {calculation.meats.length === 0 && (
+              <li className="py-3 text-sm text-ink/55">
+                {isPt ? 'Nenhuma carne selecionada.' : 'No meat selected.'}
+              </li>
+            )}
           </ul>
         </CardContent>
       </Card>
@@ -434,9 +445,15 @@ function ListTab({
       </Card>
 
       {calculation.sides.length > 0 && (
-        <Card>
+        <>
+          <BudgetTracker
+            label={isPt ? 'Acompanhamentos' : 'Sides'}
+            targetGrams={calculation.meta.target_sides_grams}
+            selectedGrams={calculation.meta.selected_sides_grams}
+          />
+          <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Acompanhamentos</CardTitle>
+            <CardTitle className="text-lg">{isPt ? 'Acompanhamentos' : 'Sides'}</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="divide-y divide-ink/10">
@@ -444,7 +461,9 @@ function ListTab({
                 const recipeAvailable = !!findRecipeById(s.id);
                 return (
                   <li key={s.id} className="flex items-center justify-between py-3 text-sm">
-                    <span>{isPt ? s.name_pt : s.name_en}</span>
+                    <span className="font-medium">
+                      {s.pieces}× {isPt ? s.name_pt : s.name_en}
+                    </span>
                     <span className="flex items-center gap-2">
                       <span className="text-ink/65">{formatGrams(s.total_grams, locale)}</span>
                       {recipeAvailable && (
@@ -464,6 +483,7 @@ function ListTab({
             </ul>
           </CardContent>
         </Card>
+        </>
       )}
 
       {contributions.length > 0 && (

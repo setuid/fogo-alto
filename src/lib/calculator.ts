@@ -7,12 +7,11 @@ export interface CalculationInput {
   drinkers_count: number;
   duration_hours: number;
   style: BarbecueStyle;
-  // IDs dos acompanhamentos selecionados. Lista vazia = sem acompanhamentos.
-  side_ids: string[];
-  meat_preferences: {
-    cut_ids: string[];
-    weight_profile: WeightProfile;
-  };
+  // cut_id -> número de peças. Chave ausente significa não selecionado.
+  cut_quantities: Record<string, number>;
+  // side_id -> número de porções.
+  side_quantities: Record<string, number>;
+  weight_profile: WeightProfile;
   drink_preferences: {
     beer: boolean;
     wine: boolean;
@@ -23,8 +22,9 @@ export interface CalculationInput {
 
 export interface MeatCalculation {
   cut_id: string;
+  pieces: number;
+  piece_weight_grams: number;
   total_grams: number;
-  per_person_grams: number; // por "comedor efetivo" (adulto = 1, criança = 0.5)
 }
 
 export interface DrinkCalculation {
@@ -37,6 +37,8 @@ export interface SideCalculation {
   id: string;
   name_pt: string;
   name_en: string;
+  pieces: number;
+  piece_weight_grams: number;
   total_grams: number;
 }
 
@@ -45,7 +47,10 @@ export interface CalculationOutput {
   drinks: DrinkCalculation[];
   sides: SideCalculation[];
   meta: {
-    total_meat_grams: number;
+    target_meat_grams: number;
+    selected_meat_grams: number;
+    target_sides_grams: number;
+    selected_sides_grams: number;
     target_grams_per_person: number;
     effective_eaters_count: number;
     total_head_count: number;
@@ -57,6 +62,9 @@ const TOTAL_GRAMS_PER_PERSON: Record<WeightProfile, number> = {
   normal: 450,
   heavy: 600,
 };
+
+// Quantidade total de acompanhamentos por pessoa (somando todas as porções).
+const SIDES_GRAMS_PER_PERSON = 200;
 
 // Multiplicadores aplicados ao total de carne por pessoa, conforme o estilo.
 const STYLE_MULTIPLIERS: Record<BarbecueStyle, number> = {
@@ -71,46 +79,60 @@ const STYLE_MULTIPLIERS: Record<BarbecueStyle, number> = {
 // acompanhamentos. Ajustável aqui se a regra mudar.
 export const CHILD_PORTION_FACTOR = 0.5;
 
-// Distribuição de peso entre os cortes selecionados, ponderada pelo
-// `default_grams_per_person` de cada corte e ajustada pelo estilo.
-function distributeMeats(
-  cutIds: string[],
-  totalGramsPerPerson: number,
-  effectiveEaters: number,
+export function effectiveEaters(adults: number, children: number): number {
+  return adults + children * CHILD_PORTION_FACTOR;
+}
+
+export function suggestedMeatGrams(
+  adults: number,
+  children: number,
+  profile: WeightProfile,
   style: BarbecueStyle,
-): MeatCalculation[] {
-  const cuts = cutIds.map(findCutById).filter((cut): cut is NonNullable<typeof cut> => Boolean(cut));
-  if (cuts.length === 0) return [];
+): number {
+  const eaters = effectiveEaters(adults, children);
+  const base = TOTAL_GRAMS_PER_PERSON[profile];
+  return Math.round(base * STYLE_MULTIPLIERS[style] * eaters);
+}
 
-  // Estilos com poucos cortes nobres: priorizar bovinos.
-  const stylePreference = (cutId: string): number => {
-    const cut = findCutById(cutId);
-    if (!cut) return 1;
-    if (style === 'parrilla') {
-      return cut.category === 'bovina' ? 1.4 : 0.7;
-    }
-    if (style === 'espeto_corrido') {
-      // Mais variedade, distribuição mais equilibrada.
-      return 1.0;
-    }
-    return 1.0;
-  };
+export function suggestedSidesGrams(adults: number, children: number): number {
+  const eaters = effectiveEaters(adults, children);
+  return Math.round(SIDES_GRAMS_PER_PERSON * eaters);
+}
 
-  const weights = cuts.map((cut) => cut.default_grams_per_person * stylePreference(cut.id));
-  const weightSum = weights.reduce((acc, w) => acc + w, 0);
-  if (weightSum === 0) return [];
+function calculateMeats(quantities: Record<string, number>): MeatCalculation[] {
+  return Object.entries(quantities)
+    .filter(([, pieces]) => pieces > 0)
+    .map(([cutId, pieces]) => {
+      const cut = findCutById(cutId);
+      if (!cut) return null;
+      const pieceGrams = Math.round(cut.typical_piece_kg * 1000);
+      return {
+        cut_id: cutId,
+        pieces,
+        piece_weight_grams: pieceGrams,
+        total_grams: pieces * pieceGrams,
+      };
+    })
+    .filter((m): m is MeatCalculation => m !== null);
+}
 
-  const totalGrams = totalGramsPerPerson * effectiveEaters;
-
-  return cuts.map((cut, idx) => {
-    const share = weights[idx] / weightSum;
-    const cutTotal = totalGrams * share;
-    return {
-      cut_id: cut.id,
-      total_grams: Math.round(cutTotal),
-      per_person_grams: Math.round(cutTotal / Math.max(1, effectiveEaters)),
-    };
-  });
+function calculateSides(quantities: Record<string, number>): SideCalculation[] {
+  return Object.entries(quantities)
+    .filter(([, pieces]) => pieces > 0)
+    .map(([sideId, pieces]) => {
+      const side = SIDES.find((s) => s.id === sideId);
+      if (!side) return null;
+      const pieceGrams = Math.round(side.typical_portion_kg * 1000);
+      return {
+        id: side.id,
+        name_pt: side.name_pt,
+        name_en: side.name_en,
+        pieces,
+        piece_weight_grams: pieceGrams,
+        total_grams: pieces * pieceGrams,
+      };
+    })
+    .filter((s): s is SideCalculation => s !== null);
 }
 
 function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
@@ -143,21 +165,12 @@ function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
     });
   }
 
-  // Água é sempre incluída e considera o head count completo (adultos + crianças).
+  // Água sempre presente, escala por head count completo.
   const agua = DRINK_CATALOG.agua;
   const aguaMl = (agua.avg_consumption_per_person_per_hour ?? 0) * duration_hours * headCount;
   drinks.push({ type: 'agua', total_ml_or_units: Math.round(aguaMl), unit: agua.unit });
 
   return drinks;
-}
-
-function calculateSides(sideIds: string[], effectiveEaters: number): SideCalculation[] {
-  return SIDES.filter((side) => sideIds.includes(side.id)).map((side) => ({
-    id: side.id,
-    name_pt: side.name_pt,
-    name_en: side.name_en,
-    total_grams: Math.round(side.grams_per_person * effectiveEaters),
-  }));
 }
 
 export function calculate(input: CalculationInput): CalculationOutput {
@@ -174,34 +187,35 @@ export function calculate(input: CalculationInput): CalculationOutput {
     throw new Error('duration_hours must be positive');
   }
 
-  const effectiveEaters = input.adults_count + input.children_count * CHILD_PORTION_FACTOR;
-  const headCount = input.adults_count + input.children_count;
-
-  const baseGrams = TOTAL_GRAMS_PER_PERSON[input.meat_preferences.weight_profile];
-  const styleMultiplier = STYLE_MULTIPLIERS[input.style];
-  const targetGramsPerPerson = Math.round(baseGrams * styleMultiplier);
-
-  const meats = distributeMeats(
-    input.meat_preferences.cut_ids,
-    targetGramsPerPerson,
-    effectiveEaters,
+  const targetMeatGrams = suggestedMeatGrams(
+    input.adults_count,
+    input.children_count,
+    input.weight_profile,
     input.style,
   );
+  const targetSidesGrams = suggestedSidesGrams(input.adults_count, input.children_count);
 
+  const meats = calculateMeats(input.cut_quantities);
+  const sides = calculateSides(input.side_quantities);
   const drinks = calculateDrinks(input);
-  const sides = calculateSides(input.side_ids, effectiveEaters);
 
-  const totalMeatGrams = meats.reduce((acc, m) => acc + m.total_grams, 0);
+  const selectedMeatGrams = meats.reduce((acc, m) => acc + m.total_grams, 0);
+  const selectedSidesGrams = sides.reduce((acc, s) => acc + s.total_grams, 0);
 
   return {
     meats,
     drinks,
     sides,
     meta: {
-      total_meat_grams: totalMeatGrams,
-      target_grams_per_person: targetGramsPerPerson,
-      effective_eaters_count: effectiveEaters,
-      total_head_count: headCount,
+      target_meat_grams: targetMeatGrams,
+      selected_meat_grams: selectedMeatGrams,
+      target_sides_grams: targetSidesGrams,
+      selected_sides_grams: selectedSidesGrams,
+      target_grams_per_person: Math.round(
+        TOTAL_GRAMS_PER_PERSON[input.weight_profile] * STYLE_MULTIPLIERS[input.style],
+      ),
+      effective_eaters_count: effectiveEaters(input.adults_count, input.children_count),
+      total_head_count: input.adults_count + input.children_count,
     },
   };
 }
@@ -210,10 +224,8 @@ export function calculate(input: CalculationInput): CalculationOutput {
 export function suggestCutsForStyle(style: BarbecueStyle): string[] {
   switch (style) {
     case 'parrilla':
-      // Parrilla argentina/uruguaia clássica: cortes nobres bovinos + chorizo.
       return ['bife_ancho', 'asado_de_tira', 'vacio', 'entranha', 'salsichao', 'pao_alho'];
     case 'espeto_corrido':
-      // Variedade larga, gramagem distribuída entre vários cortes.
       return [
         'picanha',
         'fraldinha',
@@ -226,7 +238,6 @@ export function suggestCutsForStyle(style: BarbecueStyle): string[] {
         'abacaxi',
       ];
     case 'tradicional':
-      // Mix bovino + suíno + frango + linguiça + queijo coalho.
       return [
         'picanha',
         'fraldinha',
@@ -237,7 +248,6 @@ export function suggestCutsForStyle(style: BarbecueStyle): string[] {
         'pao_alho',
       ];
     case 'americano':
-      // Steakhouse / BBQ — ribeye + ribs + sides defumados.
       return ['ribeye', 'ny_strip', 'costela_suina', 'asinha_frango', 'pancetta', 'pao_alho'];
     case 'misto':
       return [
@@ -252,5 +262,43 @@ export function suggestCutsForStyle(style: BarbecueStyle): string[] {
   }
 }
 
-// Acompanhamentos sugeridos por padrão para um novo churrasco.
 export const DEFAULT_SIDE_IDS: string[] = ['vinagrete', 'farofa', 'maionese_batata'];
+
+/**
+ * Sugere quantidades iniciais de peças para os cortes do estilo, tentando
+ * encher o orçamento total sem estourar muito. Anfitrião ajusta com +/-.
+ */
+export function suggestCutQuantitiesForStyle(
+  style: BarbecueStyle,
+  targetGrams: number,
+): Record<string, number> {
+  const cutIds = suggestCutsForStyle(style);
+  const result: Record<string, number> = {};
+  let acc = 0;
+  for (const id of cutIds) {
+    const cut = findCutById(id);
+    if (!cut) continue;
+    const pieceGrams = cut.typical_piece_kg * 1000;
+    if (acc >= targetGrams) break;
+    result[id] = 1;
+    acc += pieceGrams;
+  }
+  return result;
+}
+
+/**
+ * Sugere quantidades iniciais para os acompanhamentos default, mirando
+ * uma porção total razoável sem excesso.
+ */
+export function suggestSideQuantities(targetGrams: number): Record<string, number> {
+  const result: Record<string, number> = {};
+  let acc = 0;
+  for (const id of DEFAULT_SIDE_IDS) {
+    const side = SIDES.find((s) => s.id === id);
+    if (!side) continue;
+    if (acc >= targetGrams) break;
+    result[id] = 1;
+    acc += side.typical_portion_kg * 1000;
+  }
+  return result;
+}

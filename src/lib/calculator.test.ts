@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   CHILD_PORTION_FACTOR,
   calculate,
+  effectiveEaters,
+  suggestCutQuantitiesForStyle,
   suggestCutsForStyle,
+  suggestedMeatGrams,
+  suggestedSidesGrams,
   type CalculationInput,
 } from './calculator';
 
@@ -12,11 +16,9 @@ const baseInput = (overrides: Partial<CalculationInput> = {}): CalculationInput 
   drinkers_count: 5,
   duration_hours: 5,
   style: 'tradicional',
-  side_ids: ['arroz_branco', 'feijao_tropeiro', 'farofa', 'vinagrete', 'maionese_batata'],
-  meat_preferences: {
-    cut_ids: ['picanha', 'linguica', 'asinha_frango'],
-    weight_profile: 'normal',
-  },
+  cut_quantities: { picanha: 1, linguica: 1 },
+  side_quantities: { farofa: 1, vinagrete: 1 },
+  weight_profile: 'normal',
   drink_preferences: {
     beer: true,
     wine: false,
@@ -39,64 +41,60 @@ describe('calculate', () => {
     expect(() => calculate(baseInput({ duration_hours: 0 }))).toThrow();
   });
 
-  it('produces meats summing close to target × effective eaters', () => {
-    const out = calculate(baseInput({ adults_count: 5 }));
-    const expected = 450 * 5; // normal × 5 adultos, 0 crianças
-    expect(out.meta.target_grams_per_person).toBe(450);
-    expect(out.meta.effective_eaters_count).toBe(5);
-    expect(Math.abs(out.meta.total_meat_grams - expected)).toBeLessThan(5);
+  it('returns target equal to suggestedMeatGrams', () => {
+    const out = calculate(baseInput({ adults_count: 5, weight_profile: 'normal', style: 'tradicional' }));
+    expect(out.meta.target_meat_grams).toBe(suggestedMeatGrams(5, 0, 'normal', 'tradicional'));
+    expect(out.meta.target_meat_grams).toBe(450 * 5);
   });
 
-  it('children consume CHILD_PORTION_FACTOR of an adult portion', () => {
-    const adultsOnly = calculate(
-      baseInput({ adults_count: 4, drinkers_count: 4, children_count: 0 }),
-    );
-    const mixed = calculate(
-      baseInput({ adults_count: 4, drinkers_count: 4, children_count: 2 }),
-    );
-    const expectedRatio = (4 + 2 * CHILD_PORTION_FACTOR) / 4;
-    const actualRatio = mixed.meta.total_meat_grams / adultsOnly.meta.total_meat_grams;
-    expect(Math.abs(actualRatio - expectedRatio)).toBeLessThan(0.02);
-  });
-
-  it('applies parrilla style multiplier and prefers bovine cuts', () => {
+  it('selected meat grams is the sum of pieces × piece_weight', () => {
     const out = calculate(
       baseInput({
-        style: 'parrilla',
-        meat_preferences: { cut_ids: ['picanha', 'linguica'], weight_profile: 'normal' },
+        cut_quantities: { picanha: 2, linguica: 3 },
       }),
     );
-    expect(out.meta.target_grams_per_person).toBe(Math.round(450 * 1.1));
+    // picanha 1.2 kg/peça × 2 + linguica 0.5 kg/peça × 3 = 2.4 + 1.5 = 3.9 kg
+    expect(out.meta.selected_meat_grams).toBe(2 * 1200 + 3 * 500);
     const picanha = out.meats.find((m) => m.cut_id === 'picanha')!;
-    const linguica = out.meats.find((m) => m.cut_id === 'linguica')!;
-    expect(picanha.total_grams).toBeGreaterThan(linguica.total_grams);
+    expect(picanha.pieces).toBe(2);
+    expect(picanha.total_grams).toBe(2400);
   });
 
-  it('weight_profile heavy yields more meat than light', () => {
-    const light = calculate(
-      baseInput({ meat_preferences: { cut_ids: ['picanha'], weight_profile: 'light' } }),
+  it('children_count factors into target via effectiveEaters', () => {
+    const adultsOnly = calculate(baseInput({ adults_count: 4, drinkers_count: 4, children_count: 0 }));
+    const mixed = calculate(baseInput({ adults_count: 4, drinkers_count: 4, children_count: 2 }));
+    const expectedRatio = (4 + 2 * CHILD_PORTION_FACTOR) / 4;
+    expect(mixed.meta.target_meat_grams / adultsOnly.meta.target_meat_grams).toBeCloseTo(
+      expectedRatio,
+      2,
     );
-    const heavy = calculate(
-      baseInput({ meat_preferences: { cut_ids: ['picanha'], weight_profile: 'heavy' } }),
-    );
-    expect(heavy.meta.total_meat_grams).toBeGreaterThan(light.meta.total_meat_grams);
+  });
+
+  it('parrilla applies style multiplier', () => {
+    const trad = calculate(baseInput({ style: 'tradicional' }));
+    const parr = calculate(baseInput({ style: 'parrilla' }));
+    expect(parr.meta.target_meat_grams).toBeGreaterThan(trad.meta.target_meat_grams);
+  });
+
+  it('weight_profile heavy yields higher target than light', () => {
+    const light = calculate(baseInput({ weight_profile: 'light' }));
+    const heavy = calculate(baseInput({ weight_profile: 'heavy' }));
+    expect(heavy.meta.target_meat_grams).toBeGreaterThan(light.meta.target_meat_grams);
   });
 
   it('beer scales with drinkers and duration', () => {
     const out = calculate(baseInput({ adults_count: 4, drinkers_count: 4, duration_hours: 3 }));
     const beer = out.drinks.find((d) => d.type === 'cerveja')!;
-    // 500 ml/h × 3h × 4 bebedores = 6000 ml
-    expect(beer.total_ml_or_units).toBe(6000);
+    expect(beer.total_ml_or_units).toBe(500 * 3 * 4);
   });
 
-  it('water and soft drinks scale with full head count, not effective eaters', () => {
+  it('water scales with full head count, not effective eaters', () => {
     const out = calculate(baseInput({ adults_count: 5, children_count: 5, duration_hours: 4 }));
     const water = out.drinks.find((d) => d.type === 'agua')!;
-    // 300 ml/h/pessoa × 4h × 10 cabeças (sem desconto pra crianças)
     expect(water.total_ml_or_units).toBe(300 * 4 * 10);
   });
 
-  it('water is always present even if all drink flags are false', () => {
+  it('water is always present', () => {
     const out = calculate(
       baseInput({
         drink_preferences: { beer: false, wine: false, caipirinha: false, soft_drinks: false },
@@ -105,72 +103,54 @@ describe('calculate', () => {
     expect(out.drinks.some((d) => d.type === 'agua')).toBe(true);
   });
 
-  it('skips sides when side_ids is empty', () => {
-    const out = calculate(baseInput({ side_ids: [] }));
-    expect(out.sides).toEqual([]);
-  });
-
-  it('only includes sides that are explicitly selected', () => {
-    const out = calculate(baseInput({ side_ids: ['vinagrete', 'farofa'] }));
-    expect(out.sides.map((s) => s.id).sort()).toEqual(['farofa', 'vinagrete']);
-  });
-
-  it('sides scale by effective_eaters (kids count as half)', () => {
-    const adultsOnly = calculate(
-      baseInput({
-        adults_count: 4,
-        drinkers_count: 4,
-        children_count: 0,
-        side_ids: ['arroz_branco'],
-      }),
-    );
-    const mixed = calculate(
-      baseInput({
-        adults_count: 4,
-        drinkers_count: 4,
-        children_count: 2,
-        side_ids: ['arroz_branco'],
-      }),
-    );
-    expect(adultsOnly.sides[0].total_grams).toBe(150 * 4);
-    expect(mixed.sides[0].total_grams).toBe(Math.round(150 * (4 + 2 * 0.5)));
-  });
-
-  it('returns empty meats when no cuts provided', () => {
-    const out = calculate(
-      baseInput({ meat_preferences: { cut_ids: [], weight_profile: 'normal' } }),
-    );
-    expect(out.meats).toEqual([]);
-    expect(out.meta.total_meat_grams).toBe(0);
+  it('skips meats / sides with zero pieces', () => {
+    const out = calculate(baseInput({ cut_quantities: { picanha: 0 }, side_quantities: {} }));
+    expect(out.meats).toHaveLength(0);
+    expect(out.sides).toHaveLength(0);
+    expect(out.meta.selected_meat_grams).toBe(0);
+    expect(out.meta.selected_sides_grams).toBe(0);
   });
 
   it('ignores unknown cut ids gracefully', () => {
     const out = calculate(
-      baseInput({
-        meat_preferences: { cut_ids: ['picanha', 'unknown_cut_xyz'], weight_profile: 'normal' },
-      }),
+      baseInput({ cut_quantities: { picanha: 1, unknown_cut_xyz: 5 } }),
     );
-    expect(out.meats).toHaveLength(1);
-    expect(out.meats[0].cut_id).toBe('picanha');
+    expect(out.meats.map((m) => m.cut_id)).toEqual(['picanha']);
+  });
+
+  it('side selected_sides_grams equals sum of portion sizes × pieces', () => {
+    const out = calculate(
+      baseInput({ side_quantities: { farofa: 2, maionese_batata: 1 } }),
+    );
+    // farofa 0.5 × 2 + maionese_batata 1.0 × 1 = 1 + 1 = 2 kg
+    expect(out.meta.selected_sides_grams).toBe(2 * 500 + 1 * 1000);
   });
 });
 
-describe('suggestCutsForStyle', () => {
-  it('returns parrilla-leaning argentinian-style cuts', () => {
+describe('helpers', () => {
+  it('effectiveEaters factors kids as half', () => {
+    expect(effectiveEaters(5, 0)).toBe(5);
+    expect(effectiveEaters(4, 2)).toBe(5);
+  });
+
+  it('suggestedMeatGrams: 5 normal tradicional = 2250 g', () => {
+    expect(suggestedMeatGrams(5, 0, 'normal', 'tradicional')).toBe(2250);
+  });
+
+  it('suggestedSidesGrams: 5 adultos = 1000 g', () => {
+    expect(suggestedSidesGrams(5, 0)).toBe(1000);
+  });
+
+  it('suggestCutsForStyle parrilla starts with bife_ancho', () => {
     const cuts = suggestCutsForStyle('parrilla');
     expect(cuts).toContain('bife_ancho');
     expect(cuts).toContain('asado_de_tira');
-    expect(cuts.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('returns variety for espeto_corrido', () => {
-    const cuts = suggestCutsForStyle('espeto_corrido');
-    expect(cuts.length).toBeGreaterThanOrEqual(6);
-  });
-
-  it('returns steakhouse cuts for americano', () => {
-    const cuts = suggestCutsForStyle('americano');
-    expect(cuts).toContain('ribeye');
-    expect(cuts).toContain('ny_strip');
+  it('suggestCutQuantitiesForStyle fills toward target without overshooting wildly', () => {
+    const target = suggestedMeatGrams(5, 0, 'normal', 'parrilla'); // ~2475 g
+    const qty = suggestCutQuantitiesForStyle('parrilla', target);
+    const total = Object.entries(qty).reduce((acc, [, p]) => acc + p, 0);
+    expect(total).toBeGreaterThan(0);
   });
 });

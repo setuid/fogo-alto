@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -14,16 +14,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { BudgetTracker } from '@/components/shared/BudgetTracker';
+import { QuantityStepper } from '@/components/shared/QuantityStepper';
 import { FieldError } from '@/components/shared/FieldError';
 import { toast } from '@/components/ui/sonner';
 
 import { useBarbecue, useUpdateBarbecue } from '@/hooks/useBarbecue';
-import { suggestCutsForStyle } from '@/lib/calculator';
+import {
+  suggestCutQuantitiesForStyle,
+  suggestedMeatGrams,
+  suggestedSidesGrams,
+} from '@/lib/calculator';
 import { MEAT_CUTS, SIDES } from '@/data/catalog';
+import { formatGrams } from '@/lib/utils';
 import type { BarbecueStyle, WeightProfile } from '@/types/domain';
 
 const STYLES: BarbecueStyle[] = ['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto'];
 const PROFILES: WeightProfile[] = ['light', 'normal', 'heavy'];
+
+const quantitiesSchema = z.record(z.string(), z.coerce.number().int().min(0).max(99));
 
 const schema = z
   .object({
@@ -51,8 +60,8 @@ const schema = z
       .number({ invalid_type_error: 'Informe a duração estimada.' })
       .min(1)
       .max(24),
-    cut_ids: z.array(z.string()).min(1, { message: 'Escolha pelo menos um corte.' }),
-    side_ids: z.array(z.string()),
+    cut_quantities: quantitiesSchema,
+    side_quantities: quantitiesSchema,
     drink_beer: z.boolean(),
     drink_wine: z.boolean(),
     drink_caipirinha: z.boolean(),
@@ -62,6 +71,10 @@ const schema = z
   .refine((d) => d.drinkers_count <= d.adults_count, {
     message: 'Bebedores não podem ser mais que o número de adultos.',
     path: ['drinkers_count'],
+  })
+  .refine((d) => Object.values(d.cut_quantities).some((q) => q > 0), {
+    message: 'Adicione ao menos uma peça de carne.',
+    path: ['cut_quantities'],
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -77,9 +90,37 @@ export function BarbecueEdit() {
 
   useEffect(() => {
     if (!bbq) return;
-    const params = bbq.calc_params;
+    const params = bbq.calc_params as {
+      cut_quantities?: Record<string, number>;
+      side_quantities?: Record<string, number>;
+      cut_ids?: string[];
+      side_ids?: string[];
+    } & Partial<FormValues>;
+
     const adults = params?.adults_count ?? bbq.estimated_guests ?? 5;
     const children = params?.children_count ?? 0;
+
+    // Migra formato antigo (cut_ids → cut_quantities) ao popular o form.
+    const cutQuantities =
+      params?.cut_quantities ??
+      params?.cut_ids?.reduce<Record<string, number>>((acc, c) => {
+        acc[c] = 1;
+        return acc;
+      }, {}) ??
+      {};
+    const sideQuantities =
+      params?.side_quantities ??
+      params?.side_ids?.reduce<Record<string, number>>((acc, s) => {
+        acc[s] = 1;
+        return acc;
+      }, {}) ??
+      (bbq.include_sides
+        ? SIDES.reduce<Record<string, number>>((acc, s) => {
+            acc[s.id] = 1;
+            return acc;
+          }, {})
+        : {});
+
     form.reset({
       title: bbq.title,
       description: bbq.description ?? '',
@@ -91,17 +132,38 @@ export function BarbecueEdit() {
       weight_profile: params?.weight_profile ?? 'normal',
       drinkers_count: params?.drinkers_count ?? adults,
       duration_hours: params?.duration_hours ?? 4,
-      cut_ids: params?.cut_ids ?? [],
-      side_ids: params?.side_ids ?? (bbq.include_sides ? SIDES.map((s) => s.id) : []),
-      drink_beer: params?.drink_preferences?.beer ?? true,
-      drink_wine: params?.drink_preferences?.wine ?? false,
-      drink_caipirinha: params?.drink_preferences?.caipirinha ?? false,
-      drink_soft: params?.drink_preferences?.soft_drinks ?? true,
+      cut_quantities: cutQuantities,
+      side_quantities: sideQuantities,
+      drink_beer: params?.drink_beer ?? true,
+      drink_wine: params?.drink_wine ?? false,
+      drink_caipirinha: params?.drink_caipirinha ?? false,
+      drink_soft: params?.drink_soft ?? true,
       notes: bbq.notes ?? '',
     });
   }, [bbq, form]);
 
   const v = form.watch();
+
+  const meatTarget = useMemo(
+    () =>
+      v.adults_count
+        ? suggestedMeatGrams(v.adults_count, v.children_count ?? 0, v.weight_profile, v.style)
+        : 0,
+    [v.adults_count, v.children_count, v.weight_profile, v.style],
+  );
+  const sidesTarget = useMemo(
+    () => (v.adults_count ? suggestedSidesGrams(v.adults_count, v.children_count ?? 0) : 0),
+    [v.adults_count, v.children_count],
+  );
+
+  const meatSelected = MEAT_CUTS.reduce((acc, c) => {
+    const n = v.cut_quantities?.[c.id] ?? 0;
+    return acc + n * c.typical_piece_kg * 1000;
+  }, 0);
+  const sidesSelected = SIDES.reduce((acc, s) => {
+    const n = v.side_quantities?.[s.id] ?? 0;
+    return acc + n * s.typical_portion_kg * 1000;
+  }, 0);
 
   if (!bbq) {
     return (
@@ -122,11 +184,11 @@ export function BarbecueEdit() {
           location: values.location ?? null,
           style: values.style,
           estimated_guests: values.adults_count + values.children_count,
-          include_sides: values.side_ids.length > 0,
+          include_sides: Object.values(values.side_quantities).some((q) => q > 0),
           notes: values.notes ?? null,
           calc_params: {
-            cut_ids: values.cut_ids,
-            side_ids: values.side_ids,
+            cut_quantities: values.cut_quantities,
+            side_quantities: values.side_quantities,
             adults_count: values.adults_count,
             children_count: values.children_count,
             drinkers_count: values.drinkers_count,
@@ -156,25 +218,29 @@ export function BarbecueEdit() {
     },
   );
 
-  const toggleCut = (cutId: string) => {
-    const current = form.getValues('cut_ids');
-    form.setValue(
-      'cut_ids',
-      current.includes(cutId) ? current.filter((c) => c !== cutId) : [...current, cutId],
-    );
+  const setCutQty = (cutId: string, n: number) => {
+    const current = { ...form.getValues('cut_quantities') };
+    if (n <= 0) delete current[cutId];
+    else current[cutId] = n;
+    form.setValue('cut_quantities', current, { shouldValidate: true });
   };
 
-  const toggleSide = (sideId: string) => {
-    const current = form.getValues('side_ids');
-    form.setValue(
-      'side_ids',
-      current.includes(sideId) ? current.filter((c) => c !== sideId) : [...current, sideId],
-    );
+  const setSideQty = (sideId: string, n: number) => {
+    const current = { ...form.getValues('side_quantities') };
+    if (n <= 0) delete current[sideId];
+    else current[sideId] = n;
+    form.setValue('side_quantities', current);
   };
 
   const onStyleChange = (s: BarbecueStyle) => {
     form.setValue('style', s);
-    form.setValue('cut_ids', suggestCutsForStyle(s));
+    const target = suggestedMeatGrams(
+      v.adults_count,
+      v.children_count ?? 0,
+      v.weight_profile,
+      s,
+    );
+    form.setValue('cut_quantities', suggestCutQuantitiesForStyle(s, target));
   };
 
   const onAdultsChange = (next: number) => {
@@ -330,26 +396,83 @@ export function BarbecueEdit() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Cortes, bebidas & acompanhamentos</CardTitle>
+              <CardTitle className="text-lg">Cortes & acompanhamentos</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div>
-                <h4 className="text-stamp text-tomato-deep">Cortes</h4>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <BudgetTracker
+                  label="Carnes"
+                  targetGrams={meatTarget}
+                  selectedGrams={meatSelected}
+                  className="mb-3"
+                />
+                <div className="space-y-2">
                   {MEAT_CUTS.map((cut) => {
-                    const checked = v.cut_ids?.includes(cut.id) ?? false;
+                    const n = v.cut_quantities?.[cut.id] ?? 0;
+                    const subtotal = n * cut.typical_piece_kg * 1000;
                     return (
-                      <Label
+                      <div
                         key={cut.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
+                        className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+                          n > 0
+                            ? 'border-tomato bg-tomato/5'
+                            : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+                        }`}
                       >
-                        <Checkbox checked={checked} onCheckedChange={() => toggleCut(cut.id)} />
-                        <span className="flex-1">{cut.name_pt}</span>
-                      </Label>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium">{cut.name_pt}</p>
+                          <p className="truncate text-xs text-ink/55">
+                            1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
+                          </p>
+                        </div>
+                        <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
+                          {n > 0 ? formatGrams(subtotal) : '—'}
+                        </span>
+                        <QuantityStepper value={n} onChange={(next) => setCutQty(cut.id, next)} />
+                      </div>
                     );
                   })}
                 </div>
-                <FieldError message={form.formState.errors.cut_ids?.message} className="mt-2" />
+                <FieldError
+                  message={form.formState.errors.cut_quantities?.message?.toString()}
+                  className="mt-2"
+                />
+              </div>
+
+              <div>
+                <BudgetTracker
+                  label={t('barbecue:fields.sides')}
+                  targetGrams={sidesTarget}
+                  selectedGrams={sidesSelected}
+                  className="mb-3"
+                />
+                <div className="space-y-2">
+                  {SIDES.map((side) => {
+                    const n = v.side_quantities?.[side.id] ?? 0;
+                    const subtotal = n * side.typical_portion_kg * 1000;
+                    return (
+                      <div
+                        key={side.id}
+                        className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+                          n > 0
+                            ? 'border-tomato bg-tomato/5'
+                            : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate font-medium">{side.name_pt}</p>
+                          <p className="truncate text-xs text-ink/55">
+                            1 {side.portion_label_pt} ≈ {side.typical_portion_kg.toFixed(1)} kg
+                          </p>
+                        </div>
+                        <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
+                          {n > 0 ? formatGrams(subtotal) : '—'}
+                        </span>
+                        <QuantityStepper value={n} onChange={(next) => setSideQty(side.id, next)} />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>
@@ -372,25 +495,6 @@ export function BarbecueEdit() {
                       <span>{b.label}</span>
                     </Label>
                   ))}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-stamp text-tomato-deep">{t('barbecue:fields.sides')}</h4>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  {SIDES.map((side) => {
-                    const checked = v.side_ids?.includes(side.id) ?? false;
-                    return (
-                      <Label
-                        key={side.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
-                      >
-                        <Checkbox checked={checked} onCheckedChange={() => toggleSide(side.id)} />
-                        <span className="flex-1">{side.name_pt}</span>
-                        <span className="text-stamp text-ink/50">{side.grams_per_person}g</span>
-                      </Label>
-                    );
-                  })}
                 </div>
               </div>
 

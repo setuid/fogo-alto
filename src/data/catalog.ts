@@ -26,6 +26,13 @@ export interface MeatCut {
   name_en: string;
   category: MeatCategory;
   default_grams_per_person: number;
+  // Peso típico de uma "peça" como o açougue vende.
+  // Usado pelo seletor de quantidades no wizard (+/-).
+  typical_piece_kg: number;
+  // Como o anfitrião vai contar as peças no wizard (ex.: "peça", "manta",
+  // "bife", "maço"). Bilíngue.
+  piece_label_pt: string;
+  piece_label_en: string;
   techniques: CookingTechnique[];
   cooking_times: CookingTimeMatrix;
   tips_pt: string[];
@@ -54,6 +61,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Top Sirloin Cap',
     category: 'bovina',
     default_grams_per_person: 250,
+    typical_piece_kg: 1.2,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_mal_passado_4: { minutes_per_side: 5, total_minutes: 10, rest_minutes: 5 },
@@ -78,6 +88,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Bottom Sirloin Flap',
     category: 'bovina',
     default_grams_per_person: 220,
+    typical_piece_kg: 1.0,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 6, total_minutes: 12, rest_minutes: 4 },
@@ -92,6 +105,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Tri-tip',
     category: 'bovina',
     default_grams_per_person: 220,
+    typical_piece_kg: 1.5,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_4: { minutes_per_side: 9, total_minutes: 18, rest_minutes: 5 },
@@ -105,6 +121,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Top Sirloin',
     category: 'bovina',
     default_grams_per_person: 220,
+    typical_piece_kg: 1.5,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 6, total_minutes: 12, rest_minutes: 4 },
@@ -118,6 +137,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Striploin',
     category: 'bovina',
     default_grams_per_person: 250,
+    typical_piece_kg: 1.5,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 5, total_minutes: 10, rest_minutes: 4 },
@@ -131,6 +153,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Beef Ribs',
     category: 'bovina',
     default_grams_per_person: 350,
+    typical_piece_kg: 2.5,
+    piece_label_pt: 'rack',
+    piece_label_en: 'rack',
     techniques: ['brasa_indireta', 'defumador', 'forno'],
     cooking_times: {
       brasa_indireta_bem_passado_8: { minutes_per_side: 180, total_minutes: 360, rest_minutes: 15 },
@@ -144,6 +169,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Beef Hump',
     category: 'bovina',
     default_grams_per_person: 300,
+    typical_piece_kg: 2.0,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['brasa_indireta', 'forno', 'defumador'],
     cooking_times: {
       brasa_indireta_bem_passado_10: { minutes_per_side: 150, total_minutes: 300, rest_minutes: 15 },
@@ -157,6 +185,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Tenderloin',
     category: 'bovina',
     default_grams_per_person: 220,
+    typical_piece_kg: 1.5,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 4 },
@@ -176,6 +207,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Ribeye',
     category: 'bovina',
     default_grams_per_person: 280,
+    typical_piece_kg: 0.4,
+    piece_label_pt: 'bife',
+    piece_label_en: 'steak',
     techniques: ['grelha', 'parrilla', 'brasa_direta', 'brasa_indireta'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 5, total_minutes: 10, rest_minutes: 5 },
@@ -194,6 +228,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Bife Ancho (boneless ribeye)',
     category: 'bovina',
     default_grams_per_person: 280,
+    typical_piece_kg: 0.4,
+    piece_label_pt: 'bife',
+    piece_label_en: 'steak',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 5, total_minutes: 10, rest_minutes: 5 },
@@ -216,6 +253,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'NY Strip / Striploin',
     category: 'bovina',
     default_grams_per_person: 280,
+    typical_piece_kg: 0.4,
+    piece_label_pt: 'bife',
+    piece_label_en: 'steak',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_3: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 5 },
@@ -233,6 +273,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'T-Bone',
     category: 'bovina',
     default_grams_per_person: 350,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'bife',
+    piece_label_en: 'steak',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_4: { minutes_per_side: 7, total_minutes: 14, rest_minutes: 6 },
@@ -252,6 +295,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Tomahawk',
     category: 'bovina',
     default_grams_per_person: 400,
+    typical_piece_kg: 1.2,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['brasa_indireta', 'parrilla', 'forno'],
     cooking_times: {
       brasa_indireta_ao_ponto_5: { minutes_per_side: 25, total_minutes: 50, rest_minutes: 10 },
@@ -273,6 +319,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Asado de Tira (cross-cut short ribs)',
     category: 'bovina',
     default_grams_per_person: 350,
+    typical_piece_kg: 1.0,
+    piece_label_pt: 'manta',
+    piece_label_en: 'rack strip',
     techniques: ['parrilla', 'brasa_direta', 'brasa_indireta'],
     cooking_times: {
       parrilla_bem_passado_3: { minutes_per_side: 25, total_minutes: 50, rest_minutes: 5 },
@@ -295,6 +344,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Vacio (Argentinian flank)',
     category: 'bovina',
     default_grams_per_person: 250,
+    typical_piece_kg: 1.5,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['parrilla', 'brasa_indireta', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_4: { minutes_per_side: 20, total_minutes: 40, rest_minutes: 8 },
@@ -314,6 +366,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Skirt Steak',
     category: 'bovina',
     default_grams_per_person: 200,
+    typical_piece_kg: 0.6,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_2: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 3 },
@@ -336,6 +391,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Matambre',
     category: 'bovina',
     default_grams_per_person: 220,
+    typical_piece_kg: 0.8,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['parrilla', 'grelha', 'brasa_direta'],
     cooking_times: {
       parrilla_ao_ponto_2: { minutes_per_side: 6, total_minutes: 12, rest_minutes: 4 },
@@ -354,6 +412,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Pork Ribs',
     category: 'suina',
     default_grams_per_person: 350,
+    typical_piece_kg: 1.5,
+    piece_label_pt: 'rack',
+    piece_label_en: 'rack',
     techniques: ['brasa_indireta', 'defumador', 'forno'],
     cooking_times: {
       brasa_indireta_bem_passado_4: { minutes_per_side: 90, total_minutes: 180, rest_minutes: 10 },
@@ -370,6 +431,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Pork Belly',
     category: 'suina',
     default_grams_per_person: 200,
+    typical_piece_kg: 1.0,
+    piece_label_pt: 'peça',
+    piece_label_en: 'piece',
     techniques: ['brasa_indireta', 'parrilla', 'defumador'],
     cooking_times: {
       brasa_indireta_bem_passado_3: { minutes_per_side: 30, total_minutes: 60, rest_minutes: 8 },
@@ -389,6 +453,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Pork Chop',
     category: 'suina',
     default_grams_per_person: 220,
+    typical_piece_kg: 0.4,
+    piece_label_pt: 'bisteca',
+    piece_label_en: 'chop',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       grelha_ao_ponto_2: { minutes_per_side: 6, total_minutes: 12, rest_minutes: 4 },
@@ -404,6 +471,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Sausage',
     category: 'embutidos',
     default_grams_per_person: 120,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'maço',
+    piece_label_en: 'string',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       grelha_bem_passado_3: { minutes_per_side: 7, total_minutes: 14, rest_minutes: 2 },
@@ -417,6 +487,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Chorizo',
     category: 'embutidos',
     default_grams_per_person: 150,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'maço',
+    piece_label_en: 'string',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       parrilla_bem_passado_3: { minutes_per_side: 8, total_minutes: 16, rest_minutes: 2 },
@@ -432,6 +505,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Chicken Wings',
     category: 'aves',
     default_grams_per_person: 200,
+    typical_piece_kg: 1.0,
+    piece_label_pt: 'bandeja (1 kg)',
+    piece_label_en: 'tray (1 kg)',
     techniques: ['grelha', 'brasa_indireta'],
     cooking_times: {
       brasa_indireta_bem_passado_3: { minutes_per_side: 12, total_minutes: 24, rest_minutes: 3 },
@@ -445,6 +521,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Chicken Hearts',
     category: 'aves',
     default_grams_per_person: 100,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'bandeja (500 g)',
+    piece_label_en: 'tray (500 g)',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       grelha_bem_passado_2: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 1 },
@@ -458,6 +537,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Chicken Thighs',
     category: 'aves',
     default_grams_per_person: 250,
+    typical_piece_kg: 1.0,
+    piece_label_pt: 'bandeja (1 kg)',
+    piece_label_en: 'tray (1 kg)',
     techniques: ['brasa_indireta', 'grelha', 'forno'],
     cooking_times: {
       brasa_indireta_bem_passado_4: { minutes_per_side: 15, total_minutes: 30, rest_minutes: 5 },
@@ -473,6 +555,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Salmon',
     category: 'peixes',
     default_grams_per_person: 220,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'posta',
+    piece_label_en: 'fillet',
     techniques: ['grelha', 'forno', 'brasa_indireta'],
     cooking_times: {
       grelha_ao_ponto_3: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 2 },
@@ -488,6 +573,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Coalho Cheese',
     category: 'vegetais',
     default_grams_per_person: 80,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'pacote (8 espetinhos)',
+    piece_label_en: 'pack (8 skewers)',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       grelha_ao_ponto_2: { minutes_per_side: 2, total_minutes: 4, rest_minutes: 1 },
@@ -501,6 +589,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Garlic Bread',
     category: 'vegetais',
     default_grams_per_person: 90,
+    typical_piece_kg: 0.4,
+    piece_label_pt: 'unidade',
+    piece_label_en: 'loaf',
     techniques: ['grelha', 'brasa_indireta'],
     cooking_times: {
       brasa_indireta_ao_ponto_3: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 1 },
@@ -514,6 +605,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Grilled Pineapple',
     category: 'vegetais',
     default_grams_per_person: 100,
+    typical_piece_kg: 1.0,
+    piece_label_pt: 'unidade',
+    piece_label_en: 'pineapple',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       grelha_ao_ponto_2: { minutes_per_side: 3, total_minutes: 6, rest_minutes: 1 },
@@ -527,6 +621,9 @@ export const MEAT_CUTS: MeatCut[] = [
     name_en: 'Grilled Vegetables',
     category: 'vegetais',
     default_grams_per_person: 150,
+    typical_piece_kg: 0.5,
+    piece_label_pt: 'porção',
+    piece_label_en: 'serving',
     techniques: ['grelha', 'parrilla', 'brasa_direta'],
     cooking_times: {
       grelha_ao_ponto_2: { minutes_per_side: 4, total_minutes: 8, rest_minutes: 1 },
@@ -608,12 +705,57 @@ export interface SideDefinition {
   name_pt: string;
   name_en: string;
   grams_per_person: number;
+  // Tamanho de uma porção típica que se prepara/compra (ex.: 1 panela de arroz
+  // pra ~6 pessoas ≈ 1 kg). Usado pelo seletor +/- no wizard.
+  typical_portion_kg: number;
+  portion_label_pt: string;
+  portion_label_en: string;
 }
 
 export const SIDES: SideDefinition[] = [
-  { id: 'arroz_branco', name_pt: 'Arroz branco', name_en: 'White rice', grams_per_person: 150 },
-  { id: 'feijao_tropeiro', name_pt: 'Feijão tropeiro', name_en: 'Tropeiro beans', grams_per_person: 100 },
-  { id: 'farofa', name_pt: 'Farofa', name_en: 'Farofa', grams_per_person: 80 },
-  { id: 'vinagrete', name_pt: 'Vinagrete', name_en: 'Vinagrete salsa', grams_per_person: 60 },
-  { id: 'maionese_batata', name_pt: 'Maionese de batata', name_en: 'Potato salad', grams_per_person: 120 },
+  {
+    id: 'arroz_branco',
+    name_pt: 'Arroz branco',
+    name_en: 'White rice',
+    grams_per_person: 150,
+    typical_portion_kg: 1.0,
+    portion_label_pt: 'panela (≈ 6 pessoas)',
+    portion_label_en: 'pot (≈ 6 people)',
+  },
+  {
+    id: 'feijao_tropeiro',
+    name_pt: 'Feijão tropeiro',
+    name_en: 'Tropeiro beans',
+    grams_per_person: 100,
+    typical_portion_kg: 1.5,
+    portion_label_pt: 'panela',
+    portion_label_en: 'pot',
+  },
+  {
+    id: 'farofa',
+    name_pt: 'Farofa',
+    name_en: 'Farofa',
+    grams_per_person: 80,
+    typical_portion_kg: 0.5,
+    portion_label_pt: 'tigela',
+    portion_label_en: 'bowl',
+  },
+  {
+    id: 'vinagrete',
+    name_pt: 'Vinagrete',
+    name_en: 'Vinagrete salsa',
+    grams_per_person: 60,
+    typical_portion_kg: 0.5,
+    portion_label_pt: 'tigela',
+    portion_label_en: 'bowl',
+  },
+  {
+    id: 'maionese_batata',
+    name_pt: 'Maionese de batata',
+    name_en: 'Potato salad',
+    grams_per_person: 120,
+    typical_portion_kg: 1.0,
+    portion_label_pt: 'travessa',
+    portion_label_en: 'tray',
+  },
 ];
