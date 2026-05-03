@@ -95,7 +95,7 @@ export function AuthPage() {
                 Link mágico
               </TabsTrigger>
               <TabsTrigger value="password" className="flex-1">
-                Senha
+                Login
               </TabsTrigger>
             </TabsList>
 
