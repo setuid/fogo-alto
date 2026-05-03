@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { Beef } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -17,7 +18,27 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { BudgetTracker } from '@/components/shared/BudgetTracker';
 import { QuantityStepper } from '@/components/shared/QuantityStepper';
 import { FieldError } from '@/components/shared/FieldError';
+import { CutIcon } from '@/components/icons/CutIcon';
+import { VegetableIcon } from '@/components/icons/VegetableIcon';
+import { AnimalDiagram } from '@/components/cuts/AnimalDiagram';
 import { toast } from '@/components/ui/sonner';
+
+// Mesmo agrupamento usado no wizard.
+const VEGETABLE_IDS = new Set([
+  'cenoura',
+  'palmito_pupunha',
+  'batata',
+  'cebola',
+  'tomate',
+  'pimentao_vermelho',
+  'pimentao_amarelo',
+  'pimentao_verde',
+  'aspargos',
+  'abobrinha',
+  'berinjela',
+  'cogumelo',
+]);
+const EXTRA_IDS = new Set(['queijo_coalho', 'pao_alho', 'abacaxi']);
 
 import { useBarbecue, useUpdateBarbecue } from '@/hooks/useBarbecue';
 import {
@@ -143,6 +164,13 @@ export function BarbecueEdit() {
   }, [bbq, form]);
 
   const v = form.watch();
+  const [animalOpen, setAnimalOpen] = useState(false);
+
+  const incrementCut = (cutId: string) => {
+    const current = form.getValues('cut_quantities');
+    const next = { ...current, [cutId]: (current[cutId] ?? 0) + 1 };
+    form.setValue('cut_quantities', next, { shouldValidate: true });
+  };
 
   const meatTarget = useMemo(
     () =>
@@ -401,15 +429,27 @@ export function BarbecueEdit() {
             <CardContent className="grid gap-4">
               <div>
                 <BudgetTracker
-                  label="Carnes"
+                  label="Carnes & extras"
                   targetGrams={meatTarget}
                   selectedGrams={meatSelected}
                   className="mb-3"
                 />
+                <div className="mb-3 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAnimalOpen(true)}
+                  >
+                    <Beef className="h-4 w-4" /> Ver no animal
+                  </Button>
+                </div>
                 <div className="space-y-2">
                   {MEAT_CUTS.map((cut) => {
                     const n = v.cut_quantities?.[cut.id] ?? 0;
                     const subtotal = n * cut.typical_piece_kg * 1000;
+                    const isVeg = VEGETABLE_IDS.has(cut.id);
+                    const isExtra = EXTRA_IDS.has(cut.id);
                     return (
                       <div
                         key={cut.id}
@@ -419,6 +459,16 @@ export function BarbecueEdit() {
                             : 'border-ink/10 bg-cream-paper hover:border-ink/20'
                         }`}
                       >
+                        <span className="shrink-0">
+                          {isVeg ? (
+                            <VegetableIcon vegetableId={cut.id} className="h-7 w-7 text-olive-deep" />
+                          ) : (
+                            <CutIcon
+                              cutId={cut.id}
+                              className={`h-7 w-7 ${isExtra ? 'text-ember' : 'text-tomato'}`}
+                            />
+                          )}
+                        </span>
                         <div className="flex-1 min-w-0">
                           <p className="truncate font-medium">{cut.name_pt}</p>
                           <p className="truncate text-xs text-ink/55">
@@ -514,6 +564,13 @@ export function BarbecueEdit() {
             </Button>
           </div>
         </form>
+
+        <AnimalDiagram
+          open={animalOpen}
+          onOpenChange={setAnimalOpen}
+          cutQuantities={v.cut_quantities ?? {}}
+          onAddCut={incrementCut}
+        />
       </div>
     </>
   );

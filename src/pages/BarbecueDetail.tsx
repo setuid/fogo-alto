@@ -5,7 +5,10 @@ import { Calendar, ChefHat, Edit, Flame, MapPin, Trash2, Users } from 'lucide-re
 
 import { AppHeader } from '@/components/shared/AppHeader';
 import { BudgetTracker } from '@/components/shared/BudgetTracker';
+import { DrinkRow } from '@/components/shared/DrinkRow';
 import { ShareLinkCard } from '@/components/shared/ShareLinkCard';
+import { CutIcon } from '@/components/icons/CutIcon';
+import { VegetableIcon } from '@/components/icons/VegetableIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +29,7 @@ import { useAddGuestManually, useContributions, useGuests } from '@/hooks/useGue
 import { calcForBarbecue } from '@/lib/calc-mapping';
 import { findCutById } from '@/data/catalog';
 import { findRecipeById } from '@/data/recipes';
-import { formatEventDate, formatVolume } from '@/lib/format';
+import { formatEventDate } from '@/lib/format';
 import { buildShoppingListText } from '@/lib/shopping-list';
 import { formatGrams } from '@/lib/utils';
 import type { ContributionRow, GuestRow } from '@/types/database';
@@ -393,7 +396,7 @@ function ListTab({
       />
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">{isPt ? 'Carnes' : 'Meats'}</CardTitle>
+          <CardTitle className="text-lg">{isPt ? 'Carnes & extras' : 'Meats & extras'}</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="divide-y divide-ink/10">
@@ -401,13 +404,21 @@ function ListTab({
               const cut = findCutById(m.cut_id);
               const pieceLabel = cut ? (isPt ? cut.piece_label_pt : cut.piece_label_en) : 'peça';
               const labelPlural = m.pieces > 1 ? `${pieceLabel}s` : pieceLabel;
+              const isVeg = cut?.category === 'vegetais';
               return (
                 <li
                   key={m.cut_id}
-                  className="group relative flex items-center justify-between gap-3 py-3 text-sm"
+                  className="group relative flex items-center gap-3 py-3 text-sm"
                 >
                   <span className="absolute -left-3 top-1/2 hidden h-8 w-1 -translate-y-1/2 bg-gradient-to-b from-tomato to-tomato-deep group-hover:block" />
-                  <span>
+                  <span className="shrink-0">
+                    {isVeg ? (
+                      <VegetableIcon vegetableId={m.cut_id} className="h-6 w-6 text-olive-deep" />
+                    ) : (
+                      <CutIcon cutId={m.cut_id} className="h-6 w-6 text-tomato" />
+                    )}
+                  </span>
+                  <span className="flex-1">
                     <span className="font-medium">
                       {m.pieces}× {cut ? (isPt ? cut.name_pt : cut.name_en) : m.cut_id}
                     </span>
@@ -433,12 +444,8 @@ function ListTab({
         <CardContent>
           <ul className="divide-y divide-ink/10">
             {calculation.drinks.map((d) => (
-              <li key={d.type} className="flex items-center justify-between py-3 text-sm">
-                <span className="capitalize">{d.type.replace('_', ' ')}</span>
-                <span className="text-ink/65">
-                  {d.unit === 'ml' ? formatVolume(d.total_ml_or_units, locale) : d.total_ml_or_units}
-                </span>
-              </li>
+              <li key={d.type} className="py-3 text-sm">
+                <DrinkRow drink={d} /></li>
             ))}
           </ul>
         </CardContent>
