@@ -879,6 +879,99 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
   },
 };
 
+export interface DessertDefinition {
+  id: string;
+  name_pt: string;
+  name_en: string;
+  // Mesma ideia das sides: tamanho típico de uma "porção" comprada/preparada.
+  typical_portion_kg: number;
+  portion_label_pt: string;
+  portion_label_en: string;
+  // Quantas pessoas uma porção costuma servir (pra UI ajudar).
+  serves_people: number;
+  // Ícone curto pra exibir na lista (emoji ou null pra fallback).
+  emoji?: string;
+  // Receita opcional (vai bater com `RECIPES[id]`).
+  has_recipe?: boolean;
+}
+
+export const DESSERTS: DessertDefinition[] = [
+  {
+    id: 'sorvete',
+    name_pt: 'Sorvete',
+    name_en: 'Ice cream',
+    typical_portion_kg: 1.5,
+    portion_label_pt: 'pote (1.5 L)',
+    portion_label_en: 'tub (1.5 L)',
+    serves_people: 10,
+    emoji: '🍨',
+  },
+  {
+    id: 'picole',
+    name_pt: 'Picolé',
+    name_en: 'Popsicle',
+    typical_portion_kg: 0.72,
+    portion_label_pt: 'caixa (12 unid.)',
+    portion_label_en: 'box (12 units)',
+    serves_people: 12,
+    emoji: '🍡',
+  },
+  {
+    id: 'banana_canela',
+    name_pt: 'Banana com canela e açúcar',
+    name_en: 'Banana with cinnamon & sugar',
+    typical_portion_kg: 1.0,
+    portion_label_pt: 'cacho',
+    portion_label_en: 'bunch',
+    serves_people: 6,
+    emoji: '🍌',
+    has_recipe: true,
+  },
+  {
+    id: 'salada_frutas',
+    name_pt: 'Salada de frutas',
+    name_en: 'Fruit salad',
+    typical_portion_kg: 1.5,
+    portion_label_pt: 'tigela',
+    portion_label_en: 'bowl',
+    serves_people: 8,
+    emoji: '🥝',
+    has_recipe: true,
+  },
+  {
+    id: 'romeu_julieta',
+    name_pt: 'Romeu e Julieta',
+    name_en: 'Romeo & Juliet (cheese & guava)',
+    typical_portion_kg: 0.6,
+    portion_label_pt: 'kit (queijo + goiabada)',
+    portion_label_en: 'set (cheese + guava)',
+    serves_people: 6,
+    emoji: '🧀',
+  },
+  {
+    id: 'pave',
+    name_pt: 'Pavê',
+    name_en: 'Pavê',
+    typical_portion_kg: 1.5,
+    portion_label_pt: 'travessa',
+    portion_label_en: 'tray',
+    serves_people: 10,
+    emoji: '🍰',
+    has_recipe: true,
+  },
+  {
+    id: 'brigadeiro',
+    name_pt: 'Brigadeiros',
+    name_en: 'Brigadeiros',
+    typical_portion_kg: 0.6,
+    portion_label_pt: 'porção (~30 un.)',
+    portion_label_en: 'batch (~30 units)',
+    serves_people: 10,
+    emoji: '🍫',
+    has_recipe: true,
+  },
+];
+
 export interface SideDefinition {
   id: string;
   name_pt: string;

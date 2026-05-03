@@ -50,6 +50,17 @@ export function buildShoppingListText(opts: {
     }
   }
 
+  if (calculation.desserts.length > 0) {
+    lines.push('');
+    lines.push(isPt ? '— Sobremesas' : '— Desserts');
+    for (const dessert of calculation.desserts) {
+      const name = isPt ? dessert.name_pt : dessert.name_en;
+      const emoji = dessert.emoji ? `${dessert.emoji} ` : '';
+      const kg = (dessert.total_grams / 1000).toFixed(2);
+      lines.push(`• ${emoji}${dessert.pieces}× ${name} — ${kg} kg`);
+    }
+  }
+
   if (contributions.length > 0) {
     lines.push('');
     lines.push(isPt ? '— Convidados trazem' : '— Guests bring');

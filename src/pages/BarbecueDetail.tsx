@@ -610,6 +610,58 @@ function ListTab({
         </>
       )}
 
+      {calculation.desserts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">{isPt ? 'Sobremesas' : 'Desserts'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-ink/10">
+              {calculation.desserts.map((d) => {
+                const recipeAvailable = !!findRecipeById(d.id);
+                const key = `dessert:${d.id}`;
+                const done = isChecked(key);
+                return (
+                  <li
+                    key={d.id}
+                    className={`flex items-center gap-3 py-3 text-sm transition-opacity ${
+                      done ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <Checkbox
+                      checked={done}
+                      onCheckedChange={() => toggle(barbecueId, key)}
+                      className="shrink-0"
+                    />
+                    <span className="shrink-0 text-xl leading-none" aria-hidden>
+                      {d.emoji ?? '🍰'}
+                    </span>
+                    <span className={`flex-1 min-w-0 font-medium ${done ? 'line-through' : ''}`}>
+                      {d.pieces}× {isPt ? d.name_pt : d.name_en}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className={`text-ink/65 ${done ? 'line-through' : ''}`}>
+                        {formatGrams(d.total_grams, locale)}
+                      </span>
+                      {recipeAvailable && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0"
+                          onClick={() => setOpenRecipeId(d.id)}
+                        >
+                          Ver receita
+                        </Button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {contributions.length > 0 && (
         <Card>
           <CardHeader>

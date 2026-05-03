@@ -57,7 +57,7 @@ import {
   suggestedMeatGrams,
   suggestedSidesGrams,
 } from '@/lib/calculator';
-import { MEAT_CUTS, SIDES } from '@/data/catalog';
+import { DESSERTS, MEAT_CUTS, SIDES } from '@/data/catalog';
 import { formatGrams } from '@/lib/utils';
 import type { BarbecueStyle, WeightProfile } from '@/types/domain';
 
@@ -93,6 +93,7 @@ const schema = z
       .max(24),
     cut_quantities: quantitiesSchema,
     side_quantities: quantitiesSchema,
+    dessert_quantities: quantitiesSchema,
     drink_beer: z.boolean(),
     drink_wine: z.boolean(),
     drink_caipirinha: z.boolean(),
@@ -124,6 +125,7 @@ export function BarbecueEdit() {
     const params = bbq.calc_params as {
       cut_quantities?: Record<string, number>;
       side_quantities?: Record<string, number>;
+      dessert_quantities?: Record<string, number>;
       cut_ids?: string[];
       side_ids?: string[];
     } & Partial<FormValues>;
@@ -164,6 +166,7 @@ export function BarbecueEdit() {
       duration_hours: params?.duration_hours ?? 4,
       cut_quantities: cutQuantities,
       side_quantities: sideQuantities,
+      dessert_quantities: params?.dessert_quantities ?? {},
       drink_beer: params?.drink_beer ?? true,
       drink_wine: params?.drink_wine ?? false,
       drink_caipirinha: params?.drink_caipirinha ?? false,
@@ -225,6 +228,7 @@ export function BarbecueEdit() {
           calc_params: {
             cut_quantities: values.cut_quantities,
             side_quantities: values.side_quantities,
+            dessert_quantities: values.dessert_quantities,
             adults_count: values.adults_count,
             children_count: values.children_count,
             drinkers_count: values.drinkers_count,
@@ -266,6 +270,13 @@ export function BarbecueEdit() {
     if (n <= 0) delete current[sideId];
     else current[sideId] = n;
     form.setValue('side_quantities', current);
+  };
+
+  const setDessertQty = (dessertId: string, n: number) => {
+    const current = { ...form.getValues('dessert_quantities') };
+    if (n <= 0) delete current[dessertId];
+    else current[dessertId] = n;
+    form.setValue('dessert_quantities', current);
   };
 
   const onStyleChange = (s: BarbecueStyle) => {
@@ -544,11 +555,59 @@ export function BarbecueEdit() {
               </div>
 
               <div>
+                <h4 className="text-stamp text-tomato-deep">Sobremesas</h4>
+                <p className="mt-1 text-xs text-ink/55">
+                  Opcional — pode pular se preferir só café no final.
+                </p>
+                <div className="mt-2 space-y-2">
+                  {DESSERTS.map((dessert) => {
+                    const n = v.dessert_quantities?.[dessert.id] ?? 0;
+                    const subtotal = n * dessert.typical_portion_kg * 1000;
+                    return (
+                      <div
+                        key={dessert.id}
+                        className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
+                          n > 0
+                            ? 'border-tomato bg-tomato/5'
+                            : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+                        }`}
+                      >
+                        <span className="shrink-0 mt-0.5 text-2xl leading-none" aria-hidden>
+                          {dessert.emoji ?? '🍰'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium leading-tight break-words">
+                            {dessert.name_pt}
+                          </p>
+                          <p className="mt-0.5 text-xs text-ink/55">
+                            1 {dessert.portion_label_pt} (~{dessert.serves_people} pessoas)
+                            {n > 0 && (
+                              <>
+                                {' · '}
+                                <span className="font-medium text-tomato-deep tabular-nums">
+                                  {formatGrams(subtotal)}
+                                </span>
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <QuantityStepper
+                          value={n}
+                          onChange={(next) => setDessertQty(dessert.id, next)}
+                          className="shrink-0"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
                 <h4 className="text-stamp text-tomato-deep">Bebidas</h4>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {[
-                    { key: 'drink_beer' as const, label: 'Cerveja' },
                     { key: 'drink_wine' as const, label: 'Vinho' },
+                    { key: 'drink_beer' as const, label: 'Cerveja' },
                     { key: 'drink_caipirinha' as const, label: 'Caipirinha' },
                     { key: 'drink_soft' as const, label: 'Refrigerante / suco' },
                   ].map((b) => (

@@ -18,7 +18,17 @@ export function getSupabase(): SupabaseClient {
       );
     }
     client = createClient(url, anonKey, {
-      auth: { persistSession: true, autoRefreshToken: true },
+      auth: {
+        // Sessão persiste em localStorage e refresca o JWT em background.
+        // Junto da config "Refresh token rotation" no painel do Supabase
+        // (Auth → Settings, default 1 semana), o usuário fica logado
+        // mesmo voltando dias depois. Limpar cache do navegador zera.
+        persistSession: true,
+        autoRefreshToken: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'fogo-alto.supabase-auth',
+        detectSessionInUrl: true,
+      },
     });
   }
   return client;
