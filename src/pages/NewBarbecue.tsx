@@ -28,10 +28,20 @@ import { toast } from '@/components/ui/sonner';
 
 import { MEAT_CUTS, SIDES } from '@/data/catalog';
 
-// Cuts que são tratados como "vegetais grelháveis" no wizard. Os IDs nesse
-// set são renderizados com VegetableIcon e mostrados na seção "Legumes
-// & extras", separada visualmente das carnes.
-const VEGETABLE_IDS = new Set([
+// Aperitivos: peças leves que costumam abrir o churrasco.
+const APERITIVO_ORDER = [
+  'linguica',
+  'salsichao',
+  'asinha_frango',
+  'coracao_frango',
+  'sobrecoxa_frango',
+  'queijo_coalho',
+  'pao_alho',
+  'abacaxi',
+];
+
+// Legumes pra grelhar.
+const VEGETABLE_ORDER = [
   'cenoura',
   'palmito_pupunha',
   'batata',
@@ -44,28 +54,32 @@ const VEGETABLE_IDS = new Set([
   'abobrinha',
   'berinjela',
   'cogumelo',
-]);
+];
 
-// Cuts não-bovinos/suínos/aves que vão pra brasa mas não são propriamente
-// carnes nem legumes (queijo, pão de alho, abacaxi).
-const EXTRA_IDS = new Set(['queijo_coalho', 'pao_alho', 'abacaxi']);
+const APERITIVO_SET = new Set(APERITIVO_ORDER);
+const VEGETABLE_SET = new Set(VEGETABLE_ORDER);
 
-const MEAT_CUT_LIST = MEAT_CUTS.filter(
-  (c) => !VEGETABLE_IDS.has(c.id) && !EXTRA_IDS.has(c.id),
+// Helper pra resolver lista ordenada por id.
+const byId = (id: string) => MEAT_CUTS.find((c) => c.id === id);
+
+const APERITIVO_LIST = APERITIVO_ORDER.map(byId).filter(
+  (c): c is NonNullable<typeof c> => Boolean(c),
 );
-const VEGETABLE_LIST = MEAT_CUTS.filter((c) => VEGETABLE_IDS.has(c.id));
-const EXTRA_LIST = MEAT_CUTS.filter((c) => EXTRA_IDS.has(c.id));
+const VEGETABLE_LIST = VEGETABLE_ORDER.map(byId).filter(
+  (c): c is NonNullable<typeof c> => Boolean(c),
+);
+const MEAT_CUT_LIST = MEAT_CUTS.filter(
+  (c) => !APERITIVO_SET.has(c.id) && !VEGETABLE_SET.has(c.id),
+);
 
 // Lista [min, min+1, …, max] usada nos selects de pessoas/bebedores.
 function countOptions(min: number, max: number): number[] {
   const safeMax = Math.max(min, max);
   return Array.from({ length: safeMax - min + 1 }, (_, i) => min + i);
 }
-import { useBarbecues, useCreateBarbecue, useDuplicateBarbecue } from '@/hooks/useBarbecue';
+import { useCreateBarbecue } from '@/hooks/useBarbecue';
 import {
   calculate,
-  suggestCutQuantitiesForStyle,
-  suggestSideQuantities,
   suggestedMeatGrams,
   suggestedSidesGrams,
 } from '@/lib/calculator';
@@ -123,19 +137,18 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-const STEP_COUNT = 5;
+const STEP_COUNT = 4;
 
 export function NewBarbecue() {
   const { t } = useTranslation(['common', 'barbecue']);
   const navigate = useNavigate();
+  // Wizard começa direto no Básico — antes havia um passo "origem" com
+  // opção de duplicar, mas duplicação fica disponível no card de cada
+  // churrasco; aqui o usuário só preenche.
   const [step, setStep] = useState(0);
-  const { data: existingBbqs } = useBarbecues();
-  const duplicateMutation = useDuplicateBarbecue();
   const createMutation = useCreateBarbecue();
 
   const defaultStyle: BarbecueStyle = 'tradicional';
-  const initialMeatTarget = suggestedMeatGrams(5, 0, 'normal', defaultStyle);
-  const initialSidesTarget = suggestedSidesGrams(5, 0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -150,8 +163,10 @@ export function NewBarbecue() {
       weight_profile: 'normal',
       drinkers_count: 5,
       duration_hours: 5,
-      cut_quantities: suggestCutQuantitiesForStyle(defaultStyle, initialMeatTarget),
-      side_quantities: suggestSideQuantities(initialSidesTarget),
+      // Tudo zerado: o usuário escolhe peça por peça em vez de receber
+      // sugestão pré-marcada (que confundia em pequenos churrascos).
+      cut_quantities: {},
+      side_quantities: {},
       drink_beer: true,
       drink_wine: false,
       drink_caipirinha: false,
@@ -163,9 +178,9 @@ export function NewBarbecue() {
 
   // Quando o estilo muda, reotimiza as quantidades sugeridas pra alvo novo.
   const handleStyleChange = (next: BarbecueStyle) => {
+    // Apenas troca o estilo — não sobrescreve o que o usuário já escolheu
+    // de cortes (caso já tenha clicado em alguma coisa).
     form.setValue('style', next);
-    const target = suggestedMeatGrams(v.adults_count, v.children_count, v.weight_profile, next);
-    form.setValue('cut_quantities', suggestCutQuantitiesForStyle(next, target));
   };
 
   const handleAdultsChange = (next: number) => {
@@ -189,16 +204,6 @@ export function NewBarbecue() {
     if (n <= 0) delete current[sideId];
     else current[sideId] = n;
     form.setValue('side_quantities', current);
-  };
-
-  const handleDuplicate = async (sourceId: string) => {
-    try {
-      const created = await duplicateMutation.mutateAsync(sourceId);
-      toast.success('Churrasco duplicado.');
-      navigate(`/barbecue/${created.id}/edit`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('common:error_generic'));
-    }
   };
 
   const onSubmit = form.handleSubmit(
@@ -246,8 +251,8 @@ export function NewBarbecue() {
   );
 
   const next = async () => {
+    // Step 0 = Básico (title + event_date), 1 = Estilo, 2 = Picks, 3 = Review
     const fieldsByStep: Array<(keyof FormValues)[]> = [
-      [],
       ['title', 'event_date'],
       ['style', 'adults_count', 'children_count', 'duration_hours', 'drinkers_count', 'weight_profile'],
       ['cut_quantities'],
@@ -274,23 +279,15 @@ export function NewBarbecue() {
           {t('barbecue:dashboard.create_new')}
         </Badge>
         <h2 className="mb-2 font-display text-3xl font-semibold">
-          {step === 0 ? 'Bora começar' : v.title || 'Novo churrasco'}
+          {v.title || 'Novo churrasco'}
         </h2>
         <Progress value={((step + 1) / STEP_COUNT) * 100} className="mb-8" />
 
         <Card>
           <CardContent className="p-6">
-            {step === 0 && (
-              <Step0Origin
-                onFresh={() => setStep(1)}
-                existing={existingBbqs ?? []}
-                onDuplicate={(id) => void handleDuplicate(id)}
-              />
-            )}
+            {step === 0 && <Step1Basic form={form} onSubmitStep={() => void next()} />}
 
-            {step === 1 && <Step1Basic form={form} onSubmitStep={() => void next()} />}
-
-            {step === 2 && (
+            {step === 1 && (
               <Step2Style
                 form={form}
                 onStyleChange={handleStyleChange}
@@ -298,7 +295,7 @@ export function NewBarbecue() {
               />
             )}
 
-            {step === 3 && (
+            {step === 2 && (
               <Step3Picks
                 values={v}
                 setCutQty={setCutQty}
@@ -308,7 +305,7 @@ export function NewBarbecue() {
               />
             )}
 
-            {step === 4 && (
+            {step === 3 && (
               <ReviewStep
                 values={v}
                 onCreate={() => void onSubmit()}
@@ -348,55 +345,6 @@ export function NewBarbecue() {
 // ─────────────────────────────────────────────────────────────────────
 // Steps
 // ─────────────────────────────────────────────────────────────────────
-
-function Step0Origin({
-  onFresh,
-  existing,
-  onDuplicate,
-}: {
-  onFresh: () => void;
-  existing: { id: string; title: string }[];
-  onDuplicate: (id: string) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="font-display text-xl font-semibold">Como começar?</h3>
-        <p className="text-sm text-ink/60">
-          Comece do zero ou duplique um churrasco anterior para reaproveitar as preferências.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card
-          className="cursor-pointer p-4 transition-all hover:-translate-y-0.5 hover:shadow-cta"
-          onClick={onFresh}
-        >
-          <p className="text-stamp text-tomato-deep">Do zero</p>
-          <p className="mt-2 font-display text-lg">Criar um novo</p>
-        </Card>
-        {existing.length > 0 && (
-          <Card className="p-4">
-            <p className="text-stamp text-tomato-deep">Duplicar</p>
-            <p className="mt-1 font-display text-lg">Anteriores</p>
-            <ul className="mt-3 space-y-1">
-              {existing.slice(0, 5).map((b) => (
-                <li key={b.id}>
-                  <button
-                    type="button"
-                    className="text-left text-sm text-ink/70 hover:text-tomato"
-                    onClick={() => onDuplicate(b.id)}
-                  >
-                    {b.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function Step1Basic({
   form,
@@ -572,6 +520,51 @@ function Step2Style({
           ))}
         </RadioGroup>
       </div>
+
+      <SuggestionBanner
+        adults={v.adults_count ?? 1}
+        children={v.children_count ?? 0}
+        weightProfile={v.weight_profile}
+        style={v.style}
+      />
+    </div>
+  );
+}
+
+function SuggestionBanner({
+  adults,
+  children,
+  weightProfile,
+  style,
+}: {
+  adults: number;
+  children: number;
+  weightProfile: WeightProfile;
+  style: BarbecueStyle;
+}) {
+  const meatKg = suggestedMeatGrams(adults, children, weightProfile, style) / 1000;
+  const sidesKg = suggestedSidesGrams(adults, children) / 1000;
+  const audience =
+    children > 0 ? `${adults} adulto(s) + ${children} criança(s)` : `${adults} adulto(s)`;
+
+  return (
+    <div className="rounded-2xl border border-tomato/20 bg-gradient-to-br from-cream-paper to-cream-warm p-4 shadow-card">
+      <p className="text-stamp text-tomato-deep">Sugestão pra esse churrasco</p>
+      <p className="mt-1 text-sm text-ink/70">Pra {audience}, calcule:</p>
+      <div className="mt-2 grid gap-1 text-base font-display">
+        <div className="flex items-baseline justify-between">
+          <span>Carnes</span>
+          <span className="font-semibold tabular-nums text-tomato-deep">
+            {meatKg.toFixed(1)} kg
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span>Acompanhamentos</span>
+          <span className="font-semibold tabular-nums text-tomato-deep">
+            {sidesKg.toFixed(1)} kg
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -646,24 +639,11 @@ function Step3Picks({
           </Button>
         </div>
 
-        <h4 className="mb-2 text-stamp text-tomato-deep">Carnes</h4>
-        <div className="space-y-2">
-          {MEAT_CUT_LIST.map((cut) => (
-            <CutRow
-              key={cut.id}
-              cut={cut}
-              quantity={values.cut_quantities[cut.id] ?? 0}
-              onChange={(n) => setCutQty(cut.id, n)}
-              icon={<CutIcon cutId={cut.id} className="h-7 w-7 text-tomato" />}
-            />
-          ))}
-        </div>
-
-        {EXTRA_LIST.length > 0 && (
+        {APERITIVO_LIST.length > 0 && (
           <>
-            <h4 className="mt-4 mb-2 text-stamp text-tomato-deep">Extras na brasa</h4>
+            <h4 className="mb-2 text-stamp text-tomato-deep">Aperitivos</h4>
             <div className="space-y-2">
-              {EXTRA_LIST.map((cut) => (
+              {APERITIVO_LIST.map((cut) => (
                 <CutRow
                   key={cut.id}
                   cut={cut}
@@ -675,6 +655,19 @@ function Step3Picks({
             </div>
           </>
         )}
+
+        <h4 className="mt-4 mb-2 text-stamp text-tomato-deep">Carnes</h4>
+        <div className="space-y-2">
+          {MEAT_CUT_LIST.map((cut) => (
+            <CutRow
+              key={cut.id}
+              cut={cut}
+              quantity={values.cut_quantities[cut.id] ?? 0}
+              onChange={(n) => setCutQty(cut.id, n)}
+              icon={<CutIcon cutId={cut.id} className="h-7 w-7 text-tomato" />}
+            />
+          ))}
+        </div>
 
         {VEGETABLE_LIST.length > 0 && (
           <>

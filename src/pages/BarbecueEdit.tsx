@@ -24,7 +24,17 @@ import { AnimalDiagram } from '@/components/cuts/AnimalDiagram';
 import { toast } from '@/components/ui/sonner';
 
 // Mesmo agrupamento usado no wizard.
-const VEGETABLE_IDS = new Set([
+const APERITIVO_ORDER = [
+  'linguica',
+  'salsichao',
+  'asinha_frango',
+  'coracao_frango',
+  'sobrecoxa_frango',
+  'queijo_coalho',
+  'pao_alho',
+  'abacaxi',
+];
+const VEGETABLE_ORDER = [
   'cenoura',
   'palmito_pupunha',
   'batata',
@@ -37,8 +47,9 @@ const VEGETABLE_IDS = new Set([
   'abobrinha',
   'berinjela',
   'cogumelo',
-]);
-const EXTRA_IDS = new Set(['queijo_coalho', 'pao_alho', 'abacaxi']);
+];
+const APERITIVO_SET = new Set(APERITIVO_ORDER);
+const VEGETABLE_SET = new Set(VEGETABLE_ORDER);
 
 import { useBarbecue, useUpdateBarbecue } from '@/hooks/useBarbecue';
 import {
@@ -469,45 +480,34 @@ export function BarbecueEdit() {
                     <Beef className="h-4 w-4" /> Ver no animal
                   </Button>
                 </div>
-                <div className="space-y-2">
-                  {MEAT_CUTS.map((cut) => {
-                    const n = v.cut_quantities?.[cut.id] ?? 0;
-                    const subtotal = n * cut.typical_piece_kg * 1000;
-                    const isVeg = VEGETABLE_IDS.has(cut.id);
-                    const isExtra = EXTRA_IDS.has(cut.id);
-                    return (
-                      <div
-                        key={cut.id}
-                        className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
-                          n > 0
-                            ? 'border-tomato bg-tomato/5'
-                            : 'border-ink/10 bg-cream-paper hover:border-ink/20'
-                        }`}
-                      >
-                        <span className="shrink-0">
-                          {isVeg ? (
-                            <VegetableIcon vegetableId={cut.id} className="h-7 w-7 text-olive-deep" />
-                          ) : (
-                            <CutIcon
-                              cutId={cut.id}
-                              className={`h-7 w-7 ${isExtra ? 'text-ember' : 'text-tomato'}`}
-                            />
-                          )}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate font-medium">{cut.name_pt}</p>
-                          <p className="truncate text-xs text-ink/55">
-                            1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
-                          </p>
-                        </div>
-                        <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
-                          {n > 0 ? formatGrams(subtotal) : '—'}
-                        </span>
-                        <QuantityStepper value={n} onChange={(next) => setCutQty(cut.id, next)} />
-                      </div>
-                    );
-                  })}
-                </div>
+                <CutGroup
+                  title="Aperitivos"
+                  cuts={APERITIVO_ORDER.map((id) => MEAT_CUTS.find((c) => c.id === id)).filter(
+                    (c): c is NonNullable<typeof c> => Boolean(c),
+                  )}
+                  quantities={v.cut_quantities ?? {}}
+                  onChange={setCutQty}
+                  iconColor="text-ember"
+                />
+                <CutGroup
+                  title="Carnes"
+                  cuts={MEAT_CUTS.filter(
+                    (c) => !APERITIVO_SET.has(c.id) && !VEGETABLE_SET.has(c.id),
+                  )}
+                  quantities={v.cut_quantities ?? {}}
+                  onChange={setCutQty}
+                  iconColor="text-tomato"
+                />
+                <CutGroup
+                  title="Legumes pra grelhar"
+                  cuts={VEGETABLE_ORDER.map((id) => MEAT_CUTS.find((c) => c.id === id)).filter(
+                    (c): c is NonNullable<typeof c> => Boolean(c),
+                  )}
+                  quantities={v.cut_quantities ?? {}}
+                  onChange={setCutQty}
+                  iconColor="text-olive-deep"
+                  useVegetableIcon
+                />
                 <FieldError
                   message={form.formState.errors.cut_quantities?.message?.toString()}
                   className="mt-2"
@@ -604,6 +604,63 @@ export function BarbecueEdit() {
 function countOptions(min: number, max: number): number[] {
   const safeMax = Math.max(min, max);
   return Array.from({ length: safeMax - min + 1 }, (_, i) => min + i);
+}
+
+function CutGroup({
+  title,
+  cuts,
+  quantities,
+  onChange,
+  iconColor,
+  useVegetableIcon = false,
+}: {
+  title: string;
+  cuts: (typeof MEAT_CUTS)[number][];
+  quantities: Record<string, number>;
+  onChange: (id: string, n: number) => void;
+  iconColor: string;
+  useVegetableIcon?: boolean;
+}) {
+  if (cuts.length === 0) return null;
+  return (
+    <div>
+      <h4 className="mb-2 text-stamp text-tomato-deep">{title}</h4>
+      <div className="space-y-2">
+        {cuts.map((cut) => {
+          const n = quantities[cut.id] ?? 0;
+          const subtotal = n * cut.typical_piece_kg * 1000;
+          return (
+            <div
+              key={cut.id}
+              className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+                n > 0
+                  ? 'border-tomato bg-tomato/5'
+                  : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+              }`}
+            >
+              <span className="shrink-0">
+                {useVegetableIcon ? (
+                  <VegetableIcon vegetableId={cut.id} className={`h-7 w-7 ${iconColor}`} />
+                ) : (
+                  <CutIcon cutId={cut.id} className={`h-7 w-7 ${iconColor}`} />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-medium">{cut.name_pt}</p>
+                <p className="truncate text-xs text-ink/55">
+                  1 {cut.piece_label_pt} ≈ {cut.typical_piece_kg.toFixed(1)} kg
+                </p>
+              </div>
+              <span className="text-xs text-ink/55 tabular-nums w-16 text-right">
+                {n > 0 ? formatGrams(subtotal) : '—'}
+              </span>
+              <QuantityStepper value={n} onChange={(next) => onChange(cut.id, next)} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function toLocalDateTime(iso: string): string {
