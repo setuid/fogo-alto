@@ -21,8 +21,10 @@ export function buildShoppingListText(opts: {
   for (const meat of calculation.meats) {
     const cut = findCutById(meat.cut_id);
     const name = cut ? (isPt ? cut.name_pt : cut.name_en) : meat.cut_id;
+    const pieceLabel = cut ? (isPt ? cut.piece_label_pt : cut.piece_label_en) : 'piece';
+    const labelPlural = meat.pieces > 1 ? `${pieceLabel}s` : pieceLabel;
     const kg = (meat.total_grams / 1000).toFixed(2);
-    lines.push(`• ${name} — ${kg} kg`);
+    lines.push(`• ${meat.pieces} ${labelPlural} de ${name} — ${kg} kg`);
   }
 
   lines.push('');
@@ -40,7 +42,8 @@ export function buildShoppingListText(opts: {
     lines.push(isPt ? '— Acompanhamentos' : '— Sides');
     for (const side of calculation.sides) {
       const name = isPt ? side.name_pt : side.name_en;
-      lines.push(`• ${name} — ${(side.total_grams / 1000).toFixed(2)} kg`);
+      const kg = (side.total_grams / 1000).toFixed(2);
+      lines.push(`• ${side.pieces}× ${name} — ${kg} kg`);
     }
   }
 
