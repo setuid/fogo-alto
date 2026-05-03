@@ -85,13 +85,15 @@ describe('calculate', () => {
   it('beer scales with drinkers and duration', () => {
     const out = calculate(baseInput({ adults_count: 4, drinkers_count: 4, duration_hours: 3 }));
     const beer = out.drinks.find((d) => d.type === 'cerveja')!;
-    expect(beer.total_ml_or_units).toBe(500 * 3 * 4);
+    // 350 ml/h por bebedor × 3h × 4 = 4200 ml
+    expect(beer.total_ml_or_units).toBe(350 * 3 * 4);
   });
 
   it('water scales with full head count, not effective eaters', () => {
     const out = calculate(baseInput({ adults_count: 5, children_count: 5, duration_hours: 4 }));
     const water = out.drinks.find((d) => d.type === 'agua')!;
-    expect(water.total_ml_or_units).toBe(300 * 4 * 10);
+    // 250 ml/h por pessoa × 4h × 10 cabeças
+    expect(water.total_ml_or_units).toBe(250 * 4 * 10);
   });
 
   it('water is always present', () => {
