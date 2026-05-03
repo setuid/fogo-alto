@@ -18,7 +18,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { CostCard } from '@/components/shared/CostCard';
 import { FieldError } from '@/components/shared/FieldError';
 import { toast } from '@/components/ui/sonner';
 
@@ -27,7 +26,6 @@ import { useBarbecues, useCreateBarbecue, useDuplicateBarbecue } from '@/hooks/u
 import { suggestCutsForStyle } from '@/lib/calculator';
 import { calcInputFromBarbecue } from '@/lib/calc-mapping';
 import { calculate } from '@/lib/calculator';
-import { estimateCost } from '@/lib/cost-estimator';
 import type { BarbecueStyle, WeightProfile } from '@/types/domain';
 import type { CalcParams } from '@/types/database';
 
@@ -510,7 +508,6 @@ function ReviewStep({
     updated_at: '',
   };
   const calc = calculate(calcInputFromBarbecue(fakeRow));
-  const cost = estimateCost(calc);
 
   return (
     <div className="space-y-4">
@@ -520,8 +517,6 @@ function ReviewStep({
           {values.estimated_guests} pessoas · {values.duration_hours}h · {values.style}
         </p>
       </div>
-
-      <CostCard estimate={cost} />
 
       <Card>
         <CardHeader>

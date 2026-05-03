@@ -111,14 +111,21 @@ describe('calculate', () => {
 });
 
 describe('suggestCutsForStyle', () => {
-  it('returns parrilla-leaning bovine selection', () => {
+  it('returns parrilla-leaning argentinian-style cuts', () => {
     const cuts = suggestCutsForStyle('parrilla');
-    expect(cuts).toContain('picanha');
-    expect(cuts.length).toBeGreaterThanOrEqual(3);
+    expect(cuts).toContain('bife_ancho');
+    expect(cuts).toContain('asado_de_tira');
+    expect(cuts.length).toBeGreaterThanOrEqual(4);
   });
 
   it('returns variety for espeto_corrido', () => {
     const cuts = suggestCutsForStyle('espeto_corrido');
     expect(cuts.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it('returns steakhouse cuts for americano', () => {
+    const cuts = suggestCutsForStyle('americano');
+    expect(cuts).toContain('ribeye');
+    expect(cuts).toContain('ny_strip');
   });
 });

@@ -41,14 +41,6 @@
     "copy_link": "Copiar link",
     "description": "Mande pro grupo do WhatsApp e veja a galera confirmando."
   },
-  "cost": {
-    "title": "Custo estimado",
-    "subtitle": "Estimativa baseada em preços médios",
-    "show": "Mostrar valores",
-    "hide": "Esconder valores",
-    "last_updated": "Atualizado em {{date}}",
-    "missing_prices": "Sem referência de preço para: {{items}}"
-  },
   "cta_kitchen": "Hora da brasa",
   "stamps": {
     "calculated": "Calculado",

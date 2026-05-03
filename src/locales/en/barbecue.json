@@ -41,14 +41,6 @@
     "copy_link": "Copy link",
     "description": "Drop it in the group chat and watch them RSVP."
   },
-  "cost": {
-    "title": "Estimated cost",
-    "subtitle": "Estimate based on average prices",
-    "show": "Show amounts",
-    "hide": "Hide amounts",
-    "last_updated": "Updated {{date}}",
-    "missing_prices": "No price reference for: {{items}}"
-  },
   "cta_kitchen": "Fire it up",
   "stamps": {
     "calculated": "Calculated",

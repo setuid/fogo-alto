@@ -1,4 +1,4 @@
-import { DRINK_CATALOG, MEAT_CUTS, SIDES, findCutById } from '@/data/catalog';
+import { DRINK_CATALOG, SIDES, findCutById } from '@/data/catalog';
 import type { BarbecueStyle, WeightProfile } from '@/types/domain';
 
 export interface CalculationInput {
@@ -193,23 +193,44 @@ export function calculate(input: CalculationInput): CalculationOutput {
 export function suggestCutsForStyle(style: BarbecueStyle): string[] {
   switch (style) {
     case 'parrilla':
-      return ['picanha', 'fraldinha', 'maminha', 'linguica'];
+      // Parrilla argentina/uruguaia clássica: cortes nobres bovinos + chorizo.
+      return ['bife_ancho', 'asado_de_tira', 'vacio', 'entranha', 'salsichao', 'pao_alho'];
     case 'espeto_corrido':
+      // Variedade larga, gramagem distribuída entre vários cortes.
       return [
         'picanha',
         'fraldinha',
         'alcatra',
         'linguica',
-        'asinha_frango',
+        'sobrecoxa_frango',
         'coracao_frango',
         'queijo_coalho',
         'pao_alho',
+        'abacaxi',
       ];
     case 'tradicional':
-      return ['picanha', 'linguica', 'asinha_frango', 'queijo_coalho', 'pao_alho'];
+      // Mix bovino + suíno + frango + linguiça + queijo coalho.
+      return [
+        'picanha',
+        'fraldinha',
+        'linguica',
+        'asinha_frango',
+        'costela_suina',
+        'queijo_coalho',
+        'pao_alho',
+      ];
     case 'americano':
-      return ['fraldinha', 'asinha_frango', 'linguica'];
+      // Steakhouse / BBQ — ribeye + ribs + sides defumados.
+      return ['ribeye', 'ny_strip', 'costela_suina', 'asinha_frango', 'pancetta', 'pao_alho'];
     case 'misto':
-      return MEAT_CUTS.slice(0, 6).map((c) => c.id);
+      return [
+        'picanha',
+        'bife_ancho',
+        'linguica',
+        'asinha_frango',
+        'costela_suina',
+        'queijo_coalho',
+        'legumes_grelhados',
+      ];
   }
 }

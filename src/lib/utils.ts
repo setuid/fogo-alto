@@ -13,7 +13,3 @@ export function formatGrams(grams: number, locale: 'pt-BR' | 'en' = 'pt-BR'): st
   }
   return `${Math.round(grams)} g`;
 }
-
-export function formatBRL(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}

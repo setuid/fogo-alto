@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Calendar, ChefHat, Edit, Flame, MapPin, Trash2, Users } from 'lucide-react';
 
 import { AppHeader } from '@/components/shared/AppHeader';
-import { CostCard } from '@/components/shared/CostCard';
 import { ShareLinkCard } from '@/components/shared/ShareLinkCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,6 @@ import { toast } from '@/components/ui/sonner';
 import { useBarbecue, useDeleteBarbecue, useDuplicateBarbecue } from '@/hooks/useBarbecue';
 import { useAddGuestManually, useContributions, useGuests } from '@/hooks/useGuests';
 import { calcForBarbecue } from '@/lib/calc-mapping';
-import { estimateCost, type ContributionDeduction } from '@/lib/cost-estimator';
 import { findCutById } from '@/data/catalog';
 import { findRecipeById } from '@/data/recipes';
 import { formatEventDate, formatVolume } from '@/lib/format';
@@ -45,16 +43,8 @@ export function BarbecueDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const calculation = useMemo(() => (bbq ? calcForBarbecue(bbq) : null), [bbq]);
-  const deductions = useMemo(
-    () => contributionsToDeductions(contributions ?? []),
-    [contributions],
-  );
-  const cost = useMemo(
-    () => (calculation ? estimateCost(calculation, deductions) : null),
-    [calculation, deductions],
-  );
 
-  if (isLoading || !bbq || !calculation || !cost) {
+  if (isLoading || !bbq || !calculation) {
     return (
       <>
         <AppHeader />
@@ -155,7 +145,6 @@ export function BarbecueDetail() {
 
           <TabsContent value="overview">
             <div className="grid gap-4">
-              <CostCard estimate={cost} />
               <ShareLinkCard shareToken={bbq.share_token} />
               {bbq.description && (
                 <Card>
@@ -497,41 +486,3 @@ function ListTab({
   );
 }
 
-// Mapeia contribuições genéricas em deduções para o estimador de custo.
-function contributionsToDeductions(contributions: ContributionRow[]): ContributionDeduction[] {
-  const result: ContributionDeduction[] = [];
-  for (const c of contributions) {
-    const grams = parseGrams(c.quantity_description);
-    const ml = parseMl(c.quantity_description);
-    if (c.category === 'meat') {
-      result.push({ category: 'meat', grams: grams ?? 1000 });
-    } else if (
-      c.category === 'drink_alcoholic' ||
-      c.category === 'drink_non_alcoholic' ||
-      c.category === 'wine'
-    ) {
-      result.push({ category: 'drink', ml: ml ?? 1000 });
-    } else if (c.category === 'side') {
-      result.push({ category: 'side', grams: grams ?? 500 });
-    }
-  }
-  return result;
-}
-
-function parseGrams(text: string | null): number | undefined {
-  if (!text) return undefined;
-  const kg = text.match(/([\d.,]+)\s*kg/i);
-  if (kg) return Number.parseFloat(kg[1].replace(',', '.')) * 1000;
-  const g = text.match(/([\d.,]+)\s*g/i);
-  if (g) return Number.parseFloat(g[1].replace(',', '.'));
-  return undefined;
-}
-
-function parseMl(text: string | null): number | undefined {
-  if (!text) return undefined;
-  const l = text.match(/([\d.,]+)\s*l(?!ata)/i);
-  if (l) return Number.parseFloat(l[1].replace(',', '.')) * 1000;
-  const ml = text.match(/([\d.,]+)\s*ml/i);
-  if (ml) return Number.parseFloat(ml[1].replace(',', '.'));
-  return undefined;
-}

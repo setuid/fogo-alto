@@ -28,7 +28,7 @@ Variáveis de ambiente em `.env` (ver `.env.example`):
 ```
 src/
 ├── components/   # ui shadcn + componentes de domínio
-├── data/         # catálogos estáticos (cortes, bebidas, preços, receitas)
+├── data/         # catálogos estáticos (cortes, bebidas, receitas)
 ├── lib/          # engine de cálculo, custo, supabase, i18n
 ├── locales/      # traduções pt-BR + EN
 ├── pages/        # rotas
