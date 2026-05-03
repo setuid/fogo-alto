@@ -62,7 +62,7 @@ export function calcInputFromBarbecue(bbq: BarbecueRow): CalculationInput {
     dessert_quantities: params.dessert_quantities ?? {},
     weight_profile: params.weight_profile ?? 'normal',
     drink_preferences: params.drink_preferences ?? {
-      beer: true,
+      beer: false,
       wine: true,
       caipirinha: false,
       soft_drinks: true,

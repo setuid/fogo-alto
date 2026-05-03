@@ -3,7 +3,7 @@ import type { DrinkCalculation } from '@/lib/calculator';
 const PRETTY_LABELS: Record<string, string> = {
   cerveja: 'Cerveja',
   vinho_tinto: 'Vinho tinto',
-  caipirinha: 'Caipirinha',
+  caipirinha: 'Drinks',
   refrigerante: 'Refrigerante',
   suco: 'Suco',
   agua: 'Água',

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Beef } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -20,7 +19,7 @@ import { QuantityStepper } from '@/components/shared/QuantityStepper';
 import { FieldError } from '@/components/shared/FieldError';
 import { CutIcon } from '@/components/icons/CutIcon';
 import { VegetableIcon } from '@/components/icons/VegetableIcon';
-import { AnimalDiagram } from '@/components/cuts/AnimalDiagram';
+import { CollapsibleSection } from '@/components/shared/CollapsibleSection';
 import { toast } from '@/components/ui/sonner';
 
 // Mesmo agrupamento usado no wizard.
@@ -176,13 +175,6 @@ export function BarbecueEdit() {
   }, [bbq, form]);
 
   const v = form.watch();
-  const [animalOpen, setAnimalOpen] = useState(false);
-
-  const incrementCut = (cutId: string) => {
-    const current = form.getValues('cut_quantities');
-    const next = { ...current, [cutId]: (current[cutId] ?? 0) + 1 };
-    form.setValue('cut_quantities', next, { shouldValidate: true });
-  };
 
   const meatTarget = useMemo(
     () =>
@@ -474,16 +466,6 @@ export function BarbecueEdit() {
                   selectedGrams={meatSelected}
                   className="mb-3"
                 />
-                <div className="mb-3 flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAnimalOpen(true)}
-                  >
-                    <Beef className="h-4 w-4" /> Ver no animal
-                  </Button>
-                </div>
                 <CutGroup
                   title="Aperitivos"
                   cuts={APERITIVO_ORDER.map((id) => MEAT_CUTS.find((c) => c.id === id)).filter(
@@ -525,6 +507,7 @@ export function BarbecueEdit() {
                   selectedGrams={sidesSelected}
                   className="mb-3"
                 />
+                <CollapsibleSection title="Acompanhamentos" defaultOpen={false}>
                 <div className="space-y-2">
                   {SIDES.map((side) => {
                     const n = v.side_quantities?.[side.id] ?? 0;
@@ -552,11 +535,12 @@ export function BarbecueEdit() {
                     );
                   })}
                 </div>
+                </CollapsibleSection>
               </div>
 
               <div>
-                <h4 className="text-stamp text-tomato-deep">Sobremesas</h4>
-                <p className="mt-1 text-xs text-ink/55">
+                <CollapsibleSection title="Sobremesas" defaultOpen={false}>
+                <p className="text-xs text-ink/55">
                   Opcional — pode pular se preferir só café no final.
                 </p>
                 <div className="mt-2 space-y-2">
@@ -600,15 +584,16 @@ export function BarbecueEdit() {
                     );
                   })}
                 </div>
+                </CollapsibleSection>
               </div>
 
               <div>
-                <h4 className="text-stamp text-tomato-deep">Bebidas</h4>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <CollapsibleSection title="Bebidas" defaultOpen={false}>
+                <div className="grid gap-2 sm:grid-cols-2">
                   {[
                     { key: 'drink_wine' as const, label: 'Vinho' },
                     { key: 'drink_beer' as const, label: 'Cerveja' },
-                    { key: 'drink_caipirinha' as const, label: 'Caipirinha' },
+                    { key: 'drink_caipirinha' as const, label: 'Drinks' },
                     { key: 'drink_soft' as const, label: 'Refrigerante / suco' },
                   ].map((b) => (
                     <Label
@@ -623,6 +608,7 @@ export function BarbecueEdit() {
                     </Label>
                   ))}
                 </div>
+                </CollapsibleSection>
               </div>
 
               <div>
@@ -641,13 +627,6 @@ export function BarbecueEdit() {
             </Button>
           </div>
         </form>
-
-        <AnimalDiagram
-          open={animalOpen}
-          onOpenChange={setAnimalOpen}
-          cutQuantities={v.cut_quantities ?? {}}
-          onAddCut={incrementCut}
-        />
       </div>
     </>
   );
@@ -675,8 +654,7 @@ function CutGroup({
 }) {
   if (cuts.length === 0) return null;
   return (
-    <div>
-      <h4 className="mb-2 text-stamp text-tomato-deep">{title}</h4>
+    <CollapsibleSection title={title} defaultOpen={false}>
       <div className="space-y-2">
         {cuts.map((cut) => {
           const n = quantities[cut.id] ?? 0;
@@ -720,7 +698,7 @@ function CutGroup({
           );
         })}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 

@@ -82,11 +82,11 @@ describe('calculate', () => {
     expect(heavy.meta.target_meat_grams).toBeGreaterThan(light.meta.target_meat_grams);
   });
 
-  it('beer scales with drinkers and duration', () => {
+  it('beer scales with drinkers (not duration)', () => {
     const out = calculate(baseInput({ adults_count: 4, drinkers_count: 4, duration_hours: 3 }));
     const beer = out.drinks.find((d) => d.type === 'cerveja')!;
-    // 350 ml/h por bebedor × 3h × 4 = 4200 ml
-    expect(beer.total_ml_or_units).toBe(350 * 3 * 4);
+    // 1420 ml por bebedor (4 long necks) × 4 = 5680 ml
+    expect(beer.total_ml_or_units).toBe(1420 * 4);
   });
 
   it('water scales with full head count, not effective eaters', () => {

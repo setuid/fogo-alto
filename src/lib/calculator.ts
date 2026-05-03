@@ -254,7 +254,9 @@ function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
 
   if (drink_preferences.beer) {
     const def = DRINK_CATALOG.cerveja;
-    const totalMl = (def.avg_consumption_per_drinker_per_hour ?? 0) * duration_hours * drinkers_count;
+    // per_drinker (não escala por hora) — evita quantidades absurdas
+    // em churrascos longos.
+    const totalMl = (def.avg_consumption_per_drinker ?? 0) * drinkers_count;
     drinks.push({
       type: 'cerveja',
       total_ml_or_units: Math.round(totalMl),
@@ -281,8 +283,8 @@ function calculateDrinks(input: CalculationInput): DrinkCalculation[] {
       unit: def.unit,
       ...bottlesFor('caipirinha', totalMl),
       serving_count: Math.ceil(totalMl / CAIPIRINHA_ML_PER_SERVING),
-      serving_label_pt: 'caipirinhas',
-      serving_label_en: 'caipirinhas',
+      serving_label_pt: 'drinks',
+      serving_label_en: 'drinks',
     });
   }
   if (drink_preferences.soft_drinks) {

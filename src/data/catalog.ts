@@ -822,10 +822,10 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'cerveja',
     unit: 'ml',
     alcoholic: true,
-    // ~1 long neck por hora por bebedor. Suficiente pra socializar
-    // sem ninguém ficar bêbado — antes era 500 ml/h (~1,4 long necks/h),
-    // que dava mais de 7 long necks por pessoa em 5h.
-    avg_consumption_per_drinker_per_hour: 350,
+    // 4 long necks (~1420 ml) por bebedor pelo evento todo. Não escala
+    // por hora: a regra é per_drinker pra evitar quantidades absurdas em
+    // churrascos longos.
+    avg_consumption_per_drinker: 1420,
   },
   vinho_tinto: {
     id: 'vinho_tinto',
@@ -834,13 +834,15 @@ export const DRINK_CATALOG: Record<string, DrinkDefinition> = {
     category: 'vinho',
     unit: 'ml',
     alcoholic: true,
-    // ~1/3 de garrafa por bebedor durante todo o evento.
-    avg_consumption_per_drinker: 250,
+    // 1 garrafa de 750 ml por bebedor.
+    avg_consumption_per_drinker: 750,
   },
   caipirinha: {
+    // ID interno mantido como "caipirinha" pra preservar dados antigos
+    // (calc_params dos churrascos já criados). Label visível é "Drinks".
     id: 'caipirinha',
-    name_pt: 'Caipirinha (cachaça)',
-    name_en: 'Caipirinha (cachaça)',
+    name_pt: 'Drinks',
+    name_en: 'Drinks',
     category: 'destilado',
     unit: 'ml',
     alcoholic: true,
@@ -990,16 +992,17 @@ export const SIDES: SideDefinition[] = [
     name_pt: 'Arroz branco',
     name_en: 'White rice',
     grams_per_person: 150,
-    typical_portion_kg: 1.0,
-    portion_label_pt: 'panela (≈ 6 pessoas)',
-    portion_label_en: 'pot (≈ 6 people)',
+    // 0.5 kg de arroz cru rende ~1.5 kg cozido, serve ~8 pessoas com folga.
+    typical_portion_kg: 0.5,
+    portion_label_pt: 'panela',
+    portion_label_en: 'pot',
   },
   {
     id: 'feijao_tropeiro',
     name_pt: 'Feijão tropeiro',
     name_en: 'Tropeiro beans',
     grams_per_person: 100,
-    typical_portion_kg: 1.5,
+    typical_portion_kg: 1.0,
     portion_label_pt: 'panela',
     portion_label_en: 'pot',
   },
@@ -1017,7 +1020,7 @@ export const SIDES: SideDefinition[] = [
     name_pt: 'Vinagrete',
     name_en: 'Vinagrete salsa',
     grams_per_person: 60,
-    typical_portion_kg: 0.5,
+    typical_portion_kg: 0.4,
     portion_label_pt: 'tigela',
     portion_label_en: 'bowl',
   },
