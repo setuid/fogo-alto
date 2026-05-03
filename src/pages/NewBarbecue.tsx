@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Beef, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +21,7 @@ import { QuantityStepper } from '@/components/shared/QuantityStepper';
 import { FieldError } from '@/components/shared/FieldError';
 import { CutIcon } from '@/components/icons/CutIcon';
 import { VegetableIcon } from '@/components/icons/VegetableIcon';
-import { AnimalDiagram } from '@/components/cuts/AnimalDiagram';
+import { CollapsibleSection } from '@/components/shared/CollapsibleSection';
 import { DrinkRow } from '@/components/shared/DrinkRow';
 import { toast } from '@/components/ui/sonner';
 
@@ -166,9 +166,10 @@ export function NewBarbecue() {
       cut_quantities: {},
       side_quantities: {},
       dessert_quantities: {},
-      // Vinho é a bebida principal default; cerveja vem junto.
+      // Vinho é a bebida principal default. Cerveja, drinks e refri ficam
+      // desligados — anfitrião marca o que quiser oferecer.
       drink_wine: true,
-      drink_beer: true,
+      drink_beer: false,
       drink_caipirinha: false,
       drink_soft: true,
     },
@@ -523,7 +524,6 @@ function Step2Style({
         adults={v.adults_count ?? 1}
         children={v.children_count ?? 0}
         drinkers={v.drinkers_count ?? 0}
-        durationHours={v.duration_hours ?? 5}
         weightProfile={v.weight_profile}
         style={v.style}
       />
@@ -535,14 +535,12 @@ function SuggestionBanner({
   adults,
   children,
   drinkers,
-  durationHours,
   weightProfile,
   style,
 }: {
   adults: number;
   children: number;
   drinkers: number;
-  durationHours: number;
   weightProfile: WeightProfile;
   style: BarbecueStyle;
 }) {
@@ -551,14 +549,10 @@ function SuggestionBanner({
   const audience =
     children > 0 ? `${adults} adulto(s) + ${children} criança(s)` : `${adults} adulto(s)`;
 
-  // Estimativas pra abertura (na hora de comprar). Quantidades calibradas
-  // pra ninguém ficar bêbado nem ressacado: 250 ml de vinho/pessoa por
-  // evento, 350 ml de cerveja/hora (~1 long neck/h) — mesmas constantes
-  // do DRINK_CATALOG.
-  const wineMl = drinkers * 250;
-  const wineBottles = wineMl > 0 ? Math.ceil(wineMl / 750) : 0;
-  const beerMl = drinkers * 350 * durationHours;
-  const beerLongNecks = beerMl > 0 ? Math.ceil(beerMl / 355) : 0;
+  // Quantidades por bebedor (mesmas constantes do DRINK_CATALOG):
+  // 1 garrafa de 750 ml de vinho e 4 long necks de cerveja.
+  const wineBottles = drinkers; // 1 gf por bebedor
+  const beerLongNecks = drinkers * 4; // 4 long necks por bebedor
 
   return (
     <div className="rounded-2xl border border-tomato/20 bg-gradient-to-br from-cream-paper to-cream-warm p-4 shadow-card">
@@ -596,7 +590,7 @@ function SuggestionBanner({
       </div>
       {drinkers > 0 && (
         <p className="mt-3 text-xs text-ink/55">
-          Estimativa pra {drinkers} bebedor(es) em {durationHours}h — calibrado pra ninguém ficar bêbado.
+          Estimativa pra {drinkers} bebedor(es): 1 garrafa de vinho e 4 long necks por bebedor.
         </p>
       )}
     </div>
@@ -621,8 +615,6 @@ function Step3Picks({
   ) => void;
   cutError?: string;
 }) {
-  const [animalOpen, setAnimalOpen] = useState(false);
-
   const meatTarget = useMemo(
     () =>
       suggestedMeatGrams(
@@ -647,10 +639,6 @@ function Step3Picks({
     return acc + n * s.typical_portion_kg * 1000;
   }, 0);
 
-  const incrementCut = (cutId: string) => {
-    setCutQty(cutId, (values.cut_quantities[cutId] ?? 0) + 1);
-  };
-
   return (
     <div className="space-y-6">
       <section>
@@ -661,23 +649,12 @@ function Step3Picks({
           className="mb-3"
         />
 
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs text-ink/55">
-            Use os botões pra adicionar peças. Cada peça é o tamanho típico do açougue.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setAnimalOpen(true)}
-          >
-            <Beef className="h-4 w-4" /> Ver no animal
-          </Button>
-        </div>
+        <p className="mb-3 text-xs text-ink/55">
+          Use os botões pra adicionar peças. Cada peça é o tamanho típico do açougue.
+        </p>
 
         {APERITIVO_LIST.length > 0 && (
-          <>
-            <h4 className="mb-2 text-stamp text-tomato-deep">Aperitivos</h4>
+          <CollapsibleSection title="Aperitivos" defaultOpen={false} className="mt-2">
             <div className="space-y-2">
               {APERITIVO_LIST.map((cut) => (
                 <CutRow
@@ -689,25 +666,29 @@ function Step3Picks({
                 />
               ))}
             </div>
-          </>
+          </CollapsibleSection>
         )}
 
-        <h4 className="mt-4 mb-2 text-stamp text-tomato-deep">Carnes</h4>
-        <div className="space-y-2">
-          {MEAT_CUT_LIST.map((cut) => (
-            <CutRow
-              key={cut.id}
-              cut={cut}
-              quantity={values.cut_quantities[cut.id] ?? 0}
-              onChange={(n) => setCutQty(cut.id, n)}
-              icon={<CutIcon cutId={cut.id} className="h-7 w-7 text-tomato" />}
-            />
-          ))}
-        </div>
+        <CollapsibleSection title="Carnes" defaultOpen={false} className="mt-2">
+          <div className="space-y-2">
+            {MEAT_CUT_LIST.map((cut) => (
+              <CutRow
+                key={cut.id}
+                cut={cut}
+                quantity={values.cut_quantities[cut.id] ?? 0}
+                onChange={(n) => setCutQty(cut.id, n)}
+                icon={<CutIcon cutId={cut.id} className="h-7 w-7 text-tomato" />}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
 
         {VEGETABLE_LIST.length > 0 && (
-          <>
-            <h4 className="mt-4 mb-2 text-stamp text-tomato-deep">Legumes pra grelhar</h4>
+          <CollapsibleSection
+            title="Legumes pra grelhar"
+            defaultOpen={false}
+            className="mt-2"
+          >
             <div className="space-y-2">
               {VEGETABLE_LIST.map((cut) => (
                 <CutRow
@@ -719,7 +700,7 @@ function Step3Picks({
                 />
               ))}
             </div>
-          </>
+          </CollapsibleSection>
         )}
 
         {cutError && <FieldError message={cutError} className="mt-3" />}
@@ -732,6 +713,7 @@ function Step3Picks({
           selectedGrams={sidesSelected}
           className="mb-3"
         />
+        <CollapsibleSection title="Acompanhamentos" defaultOpen={false}>
         <div className="space-y-2">
           {SIDES.map((side) => {
             const n = values.side_quantities[side.id] ?? 0;
@@ -759,80 +741,79 @@ function Step3Picks({
             );
           })}
         </div>
+        </CollapsibleSection>
       </section>
 
       <section>
-        <h3 className="font-display text-lg">Sobremesas</h3>
-        <p className="text-xs text-ink/55">
-          Opcional — pode pular se preferir só café no final.
-        </p>
-        <div className="mt-3 space-y-2">
-          {DESSERTS.map((dessert) => {
-            const n = values.dessert_quantities[dessert.id] ?? 0;
-            const subtotal = n * dessert.typical_portion_kg * 1000;
-            return (
-              <div
-                key={dessert.id}
-                className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
-                  n > 0
-                    ? 'border-tomato bg-tomato/5'
-                    : 'border-ink/10 bg-cream-paper hover:border-ink/20'
-                }`}
-              >
-                <span className="shrink-0 text-2xl leading-none mt-0.5" aria-hidden>
-                  {dessert.emoji ?? '🍰'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium leading-tight break-words">{dessert.name_pt}</p>
-                  <p className="mt-0.5 text-xs text-ink/55">
-                    1 {dessert.portion_label_pt} (~{dessert.serves_people} pessoas)
-                    {n > 0 && (
-                      <>
-                        {' · '}
-                        <span className="font-medium text-tomato-deep tabular-nums">
-                          {formatGrams(subtotal)}
-                        </span>
-                      </>
-                    )}
-                  </p>
+        <CollapsibleSection title="Sobremesas" defaultOpen={false}>
+          <p className="text-xs text-ink/55">
+            Opcional — pode pular se preferir só café no final.
+          </p>
+          <div className="mt-3 space-y-2">
+            {DESSERTS.map((dessert) => {
+              const n = values.dessert_quantities[dessert.id] ?? 0;
+              const subtotal = n * dessert.typical_portion_kg * 1000;
+              return (
+                <div
+                  key={dessert.id}
+                  className={`flex items-start gap-3 rounded-xl border p-3 transition-colors ${
+                    n > 0
+                      ? 'border-tomato bg-tomato/5'
+                      : 'border-ink/10 bg-cream-paper hover:border-ink/20'
+                  }`}
+                >
+                  <span className="shrink-0 text-2xl leading-none mt-0.5" aria-hidden>
+                    {dessert.emoji ?? '🍰'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium leading-tight break-words">{dessert.name_pt}</p>
+                    <p className="mt-0.5 text-xs text-ink/55">
+                      1 {dessert.portion_label_pt} (~{dessert.serves_people} pessoas)
+                      {n > 0 && (
+                        <>
+                          {' · '}
+                          <span className="font-medium text-tomato-deep tabular-nums">
+                            {formatGrams(subtotal)}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <QuantityStepper
+                    value={n}
+                    onChange={(next) => setDessertQty(dessert.id, next)}
+                    className="shrink-0"
+                  />
                 </div>
-                <QuantityStepper
-                  value={n}
-                  onChange={(next) => setDessertQty(dessert.id, next)}
-                  className="shrink-0"
-                />
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
       </section>
 
       <section>
-        <h3 className="font-display text-lg">Bebidas</h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {[
-            { key: 'drink_wine' as const, label: 'Vinho' },
-            { key: 'drink_beer' as const, label: 'Cerveja' },
-            { key: 'drink_caipirinha' as const, label: 'Caipirinha' },
-            { key: 'drink_soft' as const, label: 'Refrigerante / suco' },
-          ].map((b) => (
-            <Label
-              key={b.key}
-              className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
-            >
-              <Checkbox checked={values[b.key]} onCheckedChange={(c) => onDrinkChange(b.key, !!c)} />
-              <span>{b.label}</span>
-            </Label>
-          ))}
-        </div>
+        <CollapsibleSection title="Bebidas" defaultOpen={false}>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { key: 'drink_wine' as const, label: 'Vinho' },
+              { key: 'drink_beer' as const, label: 'Cerveja' },
+              { key: 'drink_caipirinha' as const, label: 'Drinks' },
+              { key: 'drink_soft' as const, label: 'Refrigerante / suco' },
+            ].map((b) => (
+              <Label
+                key={b.key}
+                className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
+              >
+                <Checkbox
+                  checked={values[b.key]}
+                  onCheckedChange={(c) => onDrinkChange(b.key, !!c)}
+                />
+                <span>{b.label}</span>
+              </Label>
+            ))}
+          </div>
+        </CollapsibleSection>
       </section>
-
-      <AnimalDiagram
-        open={animalOpen}
-        onOpenChange={setAnimalOpen}
-        cutQuantities={values.cut_quantities}
-        onAddCut={incrementCut}
-      />
     </div>
   );
 }
