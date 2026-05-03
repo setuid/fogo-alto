@@ -59,7 +59,10 @@ export function GuestView() {
 
   const onRsvp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      toast.error('Coloca seu nome pra confirmar.');
+      return;
+    }
     try {
       const res = await upsert.mutateAsync({
         share_token: shareToken,

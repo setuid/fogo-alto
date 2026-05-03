@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { FieldError } from '@/components/shared/FieldError';
 import { toast } from '@/components/ui/sonner';
 
 import { useBarbecue, useUpdateBarbecue } from '@/hooks/useBarbecue';
@@ -26,17 +27,27 @@ const STYLES: BarbecueStyle[] = ['tradicional', 'parrilla', 'espeto_corrido', 'a
 const PROFILES: WeightProfile[] = ['light', 'normal', 'heavy'];
 
 const schema = z.object({
-  title: z.string().min(2),
+  title: z.string().min(2, { message: 'O título precisa de pelo menos 2 caracteres.' }),
   description: z.string().optional(),
-  event_date: z.string().min(1),
+  event_date: z.string().min(1, { message: 'Escolha a data e a hora do churrasco.' }),
   location: z.string().optional(),
   style: z.enum(['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto']),
-  estimated_guests: z.coerce.number().int().min(1).max(500),
+  estimated_guests: z.coerce
+    .number({ invalid_type_error: 'Informe quantos convidados.' })
+    .int()
+    .min(1, { message: 'Pelo menos 1 convidado.' })
+    .max(500),
   weight_profile: z.enum(['light', 'normal', 'heavy']),
-  drinkers_count: z.coerce.number().int().min(0),
-  duration_hours: z.coerce.number().min(1).max(24),
+  drinkers_count: z.coerce
+    .number({ invalid_type_error: 'Informe quantos vão beber álcool.' })
+    .int()
+    .min(0, { message: 'Não pode ser negativo.' }),
+  duration_hours: z.coerce
+    .number({ invalid_type_error: 'Informe a duração estimada.' })
+    .min(1, { message: 'No mínimo 1 hora.' })
+    .max(24, { message: 'No máximo 24 horas.' }),
   include_sides: z.boolean(),
-  cut_ids: z.array(z.string()).min(1),
+  cut_ids: z.array(z.string()).min(1, { message: 'Escolha pelo menos um corte.' }),
   drink_beer: z.boolean(),
   drink_wine: z.boolean(),
   drink_caipirinha: z.boolean(),
@@ -88,36 +99,46 @@ export function BarbecueEdit() {
     );
   }
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      await update.mutateAsync({
-        title: values.title,
-        description: values.description ?? null,
-        event_date: new Date(values.event_date).toISOString(),
-        location: values.location ?? null,
-        style: values.style,
-        estimated_guests: values.estimated_guests,
-        include_sides: values.include_sides,
-        notes: values.notes ?? null,
-        calc_params: {
-          cut_ids: values.cut_ids,
-          drinkers_count: values.drinkers_count,
-          duration_hours: values.duration_hours,
-          weight_profile: values.weight_profile,
-          drink_preferences: {
-            beer: values.drink_beer,
-            wine: values.drink_wine,
-            caipirinha: values.drink_caipirinha,
-            soft_drinks: values.drink_soft,
+  const onSubmit = form.handleSubmit(
+    async (values) => {
+      try {
+        await update.mutateAsync({
+          title: values.title,
+          description: values.description ?? null,
+          event_date: new Date(values.event_date).toISOString(),
+          location: values.location ?? null,
+          style: values.style,
+          estimated_guests: values.estimated_guests,
+          include_sides: values.include_sides,
+          notes: values.notes ?? null,
+          calc_params: {
+            cut_ids: values.cut_ids,
+            drinkers_count: values.drinkers_count,
+            duration_hours: values.duration_hours,
+            weight_profile: values.weight_profile,
+            drink_preferences: {
+              beer: values.drink_beer,
+              wine: values.drink_wine,
+              caipirinha: values.drink_caipirinha,
+              soft_drinks: values.drink_soft,
+            },
           },
-        },
-      });
-      toast.success('Salvo.');
-      navigate(`/barbecue/${bbq.id}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('common:error_generic'));
-    }
-  });
+        });
+        toast.success('Salvo.');
+        navigate(`/barbecue/${bbq.id}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t('common:error_generic'));
+      }
+    },
+    (errors) => {
+      const first = Object.values(errors)[0]?.message;
+      toast.error(
+        typeof first === 'string'
+          ? first
+          : 'Confira os campos destacados — ainda falta preencher alguma coisa.',
+      );
+    },
+  );
 
   const toggleCut = (cutId: string) => {
     const current = form.getValues('cut_ids');
@@ -146,11 +167,13 @@ export function BarbecueEdit() {
               <div>
                 <Label htmlFor="title">{t('barbecue:fields.title')}</Label>
                 <Input id="title" {...form.register('title')} />
+                <FieldError message={form.formState.errors.title?.message} />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="date">{t('barbecue:fields.event_date')}</Label>
                   <Input id="date" type="datetime-local" {...form.register('event_date')} />
+                  <FieldError message={form.formState.errors.event_date?.message} />
                 </div>
                 <div>
                   <Label htmlFor="location">{t('barbecue:fields.location')}</Label>
@@ -193,6 +216,7 @@ export function BarbecueEdit() {
                     min={1}
                     {...form.register('estimated_guests')}
                   />
+                  <FieldError message={form.formState.errors.estimated_guests?.message} />
                 </div>
                 <div>
                   <Label htmlFor="drinkers">Bebedores</Label>
@@ -202,6 +226,7 @@ export function BarbecueEdit() {
                     min={0}
                     {...form.register('drinkers_count')}
                   />
+                  <FieldError message={form.formState.errors.drinkers_count?.message} />
                 </div>
               </div>
               <div>
@@ -213,6 +238,7 @@ export function BarbecueEdit() {
                   min={1}
                   {...form.register('duration_hours')}
                 />
+                <FieldError message={form.formState.errors.duration_hours?.message} />
               </div>
               <div>
                 <Label>{t('barbecue:weight_profile.label')}</Label>
@@ -240,19 +266,22 @@ export function BarbecueEdit() {
               <CardTitle className="text-lg">Cortes & bebidas</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {MEAT_CUTS.map((cut) => {
-                  const checked = v.cut_ids?.includes(cut.id) ?? false;
-                  return (
-                    <Label
-                      key={cut.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
-                    >
-                      <Checkbox checked={checked} onCheckedChange={() => toggleCut(cut.id)} />
-                      <span className="flex-1">{cut.name_pt}</span>
-                    </Label>
-                  );
-                })}
+              <div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {MEAT_CUTS.map((cut) => {
+                    const checked = v.cut_ids?.includes(cut.id) ?? false;
+                    return (
+                      <Label
+                        key={cut.id}
+                        className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => toggleCut(cut.id)} />
+                        <span className="flex-1">{cut.name_pt}</span>
+                      </Label>
+                    );
+                  })}
+                </div>
+                <FieldError message={form.formState.errors.cut_ids?.message} className="mt-2" />
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
