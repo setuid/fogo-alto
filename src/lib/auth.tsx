@@ -47,9 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithMagicLink = async (email: string) => {
+    // `shouldCreateUser: false` impede que um e-mail desconhecido vire conta
+    // nova. App é privado: só usuários já cadastrados pelo admin entram.
     const { error } = await getSupabase().auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname,
+        shouldCreateUser: false,
+      },
     });
     if (error) throw error;
   };
