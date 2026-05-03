@@ -13,9 +13,16 @@
     "event_date": "Date and time",
     "location": "Location",
     "style": "Style",
-    "estimated_guests": "Estimated guests",
-    "include_sides": "Include sides",
+    "adults_count": "Adults",
+    "children_count": "Kids",
+    "drinkers_count": "Alcohol drinkers",
+    "duration_hours": "Estimated duration (hours)",
+    "sides": "Sides",
     "notes": "Notes"
+  },
+  "fields_hints": {
+    "children_count": "Counted as half a portion of meat and sides.",
+    "drinkers_count": "How many adults will drink alcohol."
   },
   "styles": {
     "tradicional": "Traditional",
@@ -24,11 +31,23 @@
     "americano": "American",
     "misto": "Mixed"
   },
+  "style_descriptions": {
+    "tradicional": "Mix of beef, pork, chicken, sausage and coalho cheese",
+    "parrilla": "Argentinian prime cuts over slow coals",
+    "espeto_corrido": "Wide variety, weight spread across 6-8 cuts",
+    "americano": "Steakhouse + BBQ — ribeye, NY strip, pork ribs",
+    "misto": "Free mix of Brazilian and classic cuts"
+  },
   "weight_profile": {
     "label": "Appetite profile",
     "light": "Light",
     "normal": "Normal",
     "heavy": "Heavy"
+  },
+  "weight_profile_descriptions": {
+    "light": "≈ 350 g of meat per person",
+    "normal": "≈ 450 g of meat per person",
+    "heavy": "≈ 600 g of meat per person"
   },
   "tabs": {
     "overview": "Overview",

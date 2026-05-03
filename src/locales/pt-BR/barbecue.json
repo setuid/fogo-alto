@@ -13,9 +13,16 @@
     "event_date": "Data e hora",
     "location": "Local",
     "style": "Estilo",
-    "estimated_guests": "Convidados estimados",
-    "include_sides": "Incluir acompanhamentos",
+    "adults_count": "Adultos",
+    "children_count": "Crianças",
+    "drinkers_count": "Bebedores de álcool",
+    "duration_hours": "Duração estimada (horas)",
+    "sides": "Acompanhamentos",
     "notes": "Observações"
+  },
+  "fields_hints": {
+    "children_count": "Contam como meia porção de carne e acompanhamentos.",
+    "drinkers_count": "Quantos adultos vão tomar bebida alcoólica."
   },
   "styles": {
     "tradicional": "Tradicional",
@@ -24,11 +31,23 @@
     "americano": "Americano",
     "misto": "Misto"
   },
+  "style_descriptions": {
+    "tradicional": "Mix de bovino, suíno, frango, linguiça e queijo coalho",
+    "parrilla": "Cortes nobres argentinos em brasa lenta",
+    "espeto_corrido": "Variedade ampla, gramagem distribuída em 6-8 cortes",
+    "americano": "Steakhouse + BBQ — ribeye, NY strip, costela suína",
+    "misto": "Mistura livre de cortes brasileiros e clássicos"
+  },
   "weight_profile": {
     "label": "Perfil de consumo",
     "light": "Leve",
     "normal": "Normal",
     "heavy": "Pesado"
+  },
+  "weight_profile_descriptions": {
+    "light": "≈ 350 g de carne por pessoa",
+    "normal": "≈ 450 g de carne por pessoa",
+    "heavy": "≈ 600 g de carne por pessoa"
   },
   "tabs": {
     "overview": "Visão geral",

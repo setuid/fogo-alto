@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { calculate, suggestCutsForStyle, type CalculationInput } from './calculator';
+import {
+  CHILD_PORTION_FACTOR,
+  calculate,
+  suggestCutsForStyle,
+  type CalculationInput,
+} from './calculator';
 
 const baseInput = (overrides: Partial<CalculationInput> = {}): CalculationInput => ({
-  guests_count: 10,
-  drinkers_count: 7,
+  adults_count: 5,
+  children_count: 0,
+  drinkers_count: 5,
   duration_hours: 5,
   style: 'tradicional',
-  include_sides: true,
+  side_ids: ['arroz_branco', 'feijao_tropeiro', 'farofa', 'vinagrete', 'maionese_batata'],
   meat_preferences: {
     cut_ids: ['picanha', 'linguica', 'asinha_frango'],
     weight_profile: 'normal',
@@ -21,24 +27,36 @@ const baseInput = (overrides: Partial<CalculationInput> = {}): CalculationInput 
 });
 
 describe('calculate', () => {
-  it('rejects non-positive guests_count', () => {
-    expect(() => calculate(baseInput({ guests_count: 0 }))).toThrow();
+  it('rejects zero total guests', () => {
+    expect(() => calculate(baseInput({ adults_count: 0, children_count: 0 }))).toThrow();
   });
 
-  it('rejects drinkers_count above guests_count', () => {
-    expect(() => calculate(baseInput({ drinkers_count: 999 }))).toThrow();
+  it('rejects drinkers_count above adults_count', () => {
+    expect(() => calculate(baseInput({ adults_count: 5, drinkers_count: 999 }))).toThrow();
   });
 
   it('rejects non-positive duration_hours', () => {
     expect(() => calculate(baseInput({ duration_hours: 0 }))).toThrow();
   });
 
-  it('produces meats summing close to target grams per person × guests', () => {
-    const out = calculate(baseInput());
-    const expected = 450 * 10; // normal × 10 convidados
+  it('produces meats summing close to target × effective eaters', () => {
+    const out = calculate(baseInput({ adults_count: 5 }));
+    const expected = 450 * 5; // normal × 5 adultos, 0 crianças
     expect(out.meta.target_grams_per_person).toBe(450);
-    // Tolerância pequena por arredondamento na distribuição.
+    expect(out.meta.effective_eaters_count).toBe(5);
     expect(Math.abs(out.meta.total_meat_grams - expected)).toBeLessThan(5);
+  });
+
+  it('children consume CHILD_PORTION_FACTOR of an adult portion', () => {
+    const adultsOnly = calculate(
+      baseInput({ adults_count: 4, drinkers_count: 4, children_count: 0 }),
+    );
+    const mixed = calculate(
+      baseInput({ adults_count: 4, drinkers_count: 4, children_count: 2 }),
+    );
+    const expectedRatio = (4 + 2 * CHILD_PORTION_FACTOR) / 4;
+    const actualRatio = mixed.meta.total_meat_grams / adultsOnly.meta.total_meat_grams;
+    expect(Math.abs(actualRatio - expectedRatio)).toBeLessThan(0.02);
   });
 
   it('applies parrilla style multiplier and prefers bovine cuts', () => {
@@ -54,7 +72,7 @@ describe('calculate', () => {
     expect(picanha.total_grams).toBeGreaterThan(linguica.total_grams);
   });
 
-  it('weight_profile heavy yields more meat per person than light', () => {
+  it('weight_profile heavy yields more meat than light', () => {
     const light = calculate(
       baseInput({ meat_preferences: { cut_ids: ['picanha'], weight_profile: 'light' } }),
     );
@@ -65,10 +83,17 @@ describe('calculate', () => {
   });
 
   it('beer scales with drinkers and duration', () => {
-    const out = calculate(baseInput({ drinkers_count: 4, duration_hours: 3 }));
+    const out = calculate(baseInput({ adults_count: 4, drinkers_count: 4, duration_hours: 3 }));
     const beer = out.drinks.find((d) => d.type === 'cerveja')!;
     // 500 ml/h × 3h × 4 bebedores = 6000 ml
     expect(beer.total_ml_or_units).toBe(6000);
+  });
+
+  it('water and soft drinks scale with full head count, not effective eaters', () => {
+    const out = calculate(baseInput({ adults_count: 5, children_count: 5, duration_hours: 4 }));
+    const water = out.drinks.find((d) => d.type === 'agua')!;
+    // 300 ml/h/pessoa × 4h × 10 cabeças (sem desconto pra crianças)
+    expect(water.total_ml_or_units).toBe(300 * 4 * 10);
   });
 
   it('water is always present even if all drink flags are false', () => {
@@ -80,15 +105,35 @@ describe('calculate', () => {
     expect(out.drinks.some((d) => d.type === 'agua')).toBe(true);
   });
 
-  it('skips sides when include_sides is false', () => {
-    const out = calculate(baseInput({ include_sides: false }));
+  it('skips sides when side_ids is empty', () => {
+    const out = calculate(baseInput({ side_ids: [] }));
     expect(out.sides).toEqual([]);
   });
 
-  it('includes sides scaled by guest count when enabled', () => {
-    const out = calculate(baseInput({ guests_count: 8 }));
-    const arroz = out.sides.find((s) => s.id === 'arroz_branco')!;
-    expect(arroz.total_grams).toBe(150 * 8);
+  it('only includes sides that are explicitly selected', () => {
+    const out = calculate(baseInput({ side_ids: ['vinagrete', 'farofa'] }));
+    expect(out.sides.map((s) => s.id).sort()).toEqual(['farofa', 'vinagrete']);
+  });
+
+  it('sides scale by effective_eaters (kids count as half)', () => {
+    const adultsOnly = calculate(
+      baseInput({
+        adults_count: 4,
+        drinkers_count: 4,
+        children_count: 0,
+        side_ids: ['arroz_branco'],
+      }),
+    );
+    const mixed = calculate(
+      baseInput({
+        adults_count: 4,
+        drinkers_count: 4,
+        children_count: 2,
+        side_ids: ['arroz_branco'],
+      }),
+    );
+    expect(adultsOnly.sides[0].total_grams).toBe(150 * 4);
+    expect(mixed.sides[0].total_grams).toBe(Math.round(150 * (4 + 2 * 0.5)));
   });
 
   it('returns empty meats when no cuts provided', () => {

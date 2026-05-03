@@ -13,6 +13,10 @@ import type {
 
 export interface CalcParams {
   cut_ids: string[];
+  side_ids: string[];
+  // Convidados separados por faixa etária — crianças consomem ~metade.
+  adults_count: number;
+  children_count: number;
   drinkers_count: number;
   duration_hours: number;
   weight_profile: WeightProfile;

@@ -15,50 +15,59 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { FieldError } from '@/components/shared/FieldError';
 import { toast } from '@/components/ui/sonner';
 
-import { MEAT_CUTS } from '@/data/catalog';
+import { MEAT_CUTS, SIDES } from '@/data/catalog';
 import { useBarbecues, useCreateBarbecue, useDuplicateBarbecue } from '@/hooks/useBarbecue';
-import { suggestCutsForStyle } from '@/lib/calculator';
+import { DEFAULT_SIDE_IDS, calculate, suggestCutsForStyle } from '@/lib/calculator';
 import { calcInputFromBarbecue } from '@/lib/calc-mapping';
-import { calculate } from '@/lib/calculator';
+import { formatGrams } from '@/lib/utils';
 import type { BarbecueStyle, WeightProfile } from '@/types/domain';
 import type { CalcParams } from '@/types/database';
 
 const STYLES: BarbecueStyle[] = ['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto'];
 const PROFILES: WeightProfile[] = ['light', 'normal', 'heavy'];
 
-const schema = z.object({
-  title: z.string().min(2, { message: 'O título precisa de pelo menos 2 caracteres.' }),
-  description: z.string().optional(),
-  event_date: z.string().min(1, { message: 'Escolha a data e a hora do churrasco.' }),
-  location: z.string().optional(),
-  style: z.enum(['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto']),
-  estimated_guests: z.coerce
-    .number({ invalid_type_error: 'Informe quantos convidados.' })
-    .int()
-    .min(1, { message: 'Pelo menos 1 convidado.' })
-    .max(500),
-  weight_profile: z.enum(['light', 'normal', 'heavy']),
-  drinkers_count: z.coerce
-    .number({ invalid_type_error: 'Informe quantos vão beber álcool.' })
-    .int()
-    .min(0, { message: 'Não pode ser negativo.' }),
-  duration_hours: z.coerce
-    .number({ invalid_type_error: 'Informe a duração estimada.' })
-    .min(1, { message: 'No mínimo 1 hora.' })
-    .max(24, { message: 'No máximo 24 horas.' }),
-  include_sides: z.boolean(),
-  cut_ids: z.array(z.string()).min(1, { message: 'Escolha pelo menos um corte.' }),
-  drink_beer: z.boolean(),
-  drink_wine: z.boolean(),
-  drink_caipirinha: z.boolean(),
-  drink_soft: z.boolean(),
-});
+const schema = z
+  .object({
+    title: z.string().min(2, { message: 'O título precisa de pelo menos 2 caracteres.' }),
+    description: z.string().optional(),
+    event_date: z.string().min(1, { message: 'Escolha a data e a hora do churrasco.' }),
+    location: z.string().optional(),
+    style: z.enum(['tradicional', 'parrilla', 'espeto_corrido', 'americano', 'misto']),
+    adults_count: z.coerce
+      .number({ invalid_type_error: 'Informe quantos adultos.' })
+      .int()
+      .min(1, { message: 'Pelo menos 1 adulto.' })
+      .max(500),
+    children_count: z.coerce
+      .number({ invalid_type_error: 'Número de crianças inválido.' })
+      .int()
+      .min(0, { message: 'Não pode ser negativo.' })
+      .max(500),
+    weight_profile: z.enum(['light', 'normal', 'heavy']),
+    drinkers_count: z.coerce
+      .number({ invalid_type_error: 'Informe quantos vão beber álcool.' })
+      .int()
+      .min(0, { message: 'Não pode ser negativo.' }),
+    duration_hours: z.coerce
+      .number({ invalid_type_error: 'Informe a duração estimada.' })
+      .min(1, { message: 'No mínimo 1 hora.' })
+      .max(24, { message: 'No máximo 24 horas.' }),
+    cut_ids: z.array(z.string()).min(1, { message: 'Escolha pelo menos um corte.' }),
+    side_ids: z.array(z.string()),
+    drink_beer: z.boolean(),
+    drink_wine: z.boolean(),
+    drink_caipirinha: z.boolean(),
+    drink_soft: z.boolean(),
+  })
+  .refine((d) => d.drinkers_count <= d.adults_count, {
+    message: 'Bebedores não podem ser mais que o número de adultos.',
+    path: ['drinkers_count'],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -82,12 +91,13 @@ export function NewBarbecue() {
       event_date: '',
       location: '',
       style: defaultStyle,
-      estimated_guests: 10,
+      adults_count: 5,
+      children_count: 0,
       weight_profile: 'normal',
-      drinkers_count: 7,
+      drinkers_count: 5,
       duration_hours: 5,
-      include_sides: true,
       cut_ids: suggestCutsForStyle(defaultStyle),
+      side_ids: DEFAULT_SIDE_IDS,
       drink_beer: true,
       drink_wine: false,
       drink_caipirinha: false,
@@ -102,6 +112,17 @@ export function NewBarbecue() {
     form.setValue('cut_ids', suggestCutsForStyle(next));
   };
 
+  // Quando o usuário muda adultos, sincroniza os bebedores se ainda estavam
+  // no padrão (= adultos antigos). Não atropela ajuste manual.
+  const handleAdultsChange = (next: number) => {
+    const oldAdults = form.getValues('adults_count');
+    const oldDrinkers = form.getValues('drinkers_count');
+    form.setValue('adults_count', next);
+    if (oldDrinkers === oldAdults || oldDrinkers > next) {
+      form.setValue('drinkers_count', next);
+    }
+  };
+
   const toggleCut = (cutId: string) => {
     const current = form.getValues('cut_ids');
     if (current.includes(cutId)) {
@@ -111,6 +132,18 @@ export function NewBarbecue() {
       );
     } else {
       form.setValue('cut_ids', [...current, cutId]);
+    }
+  };
+
+  const toggleSide = (sideId: string) => {
+    const current = form.getValues('side_ids');
+    if (current.includes(sideId)) {
+      form.setValue(
+        'side_ids',
+        current.filter((s) => s !== sideId),
+      );
+    } else {
+      form.setValue('side_ids', [...current, sideId]);
     }
   };
 
@@ -128,6 +161,9 @@ export function NewBarbecue() {
     async (values) => {
       const calc_params: CalcParams = {
         cut_ids: values.cut_ids,
+        side_ids: values.side_ids,
+        adults_count: values.adults_count,
+        children_count: values.children_count,
         drinkers_count: values.drinkers_count,
         duration_hours: values.duration_hours,
         weight_profile: values.weight_profile,
@@ -145,8 +181,9 @@ export function NewBarbecue() {
           event_date: new Date(values.event_date).toISOString(),
           location: values.location,
           style: values.style,
-          estimated_guests: values.estimated_guests,
-          include_sides: values.include_sides,
+          estimated_guests: values.adults_count + values.children_count,
+          // Mantemos o flag legado coerente com o que foi escolhido.
+          include_sides: values.side_ids.length > 0,
           calc_params,
         });
         toast.success('Churrasco criado.');
@@ -169,7 +206,7 @@ export function NewBarbecue() {
     const fieldsByStep: Array<(keyof FormValues)[]> = [
       [], // step 0 — origem (sem validação)
       ['title', 'event_date'],
-      ['style', 'estimated_guests', 'duration_hours', 'drinkers_count', 'weight_profile'],
+      ['style', 'adults_count', 'children_count', 'duration_hours', 'drinkers_count', 'weight_profile'],
       ['cut_ids'],
       [],
     ];
@@ -274,8 +311,6 @@ export function NewBarbecue() {
                   <Label htmlFor="description">{t('barbecue:fields.description')}</Label>
                   <Textarea id="description" {...form.register('description')} />
                 </div>
-                {/* Submit invisível pra Enter funcionar; o botão visível
-                    está no rodapé do wizard com onClick={next}. */}
                 <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
               </form>
             )}
@@ -285,42 +320,73 @@ export function NewBarbecue() {
                 <div>
                   <Label>{t('barbecue:fields.style')}</Label>
                   <Select value={v.style} onValueChange={(s) => handleStyleChange(s as BarbecueStyle)}>
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger className="mt-1 h-auto py-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {STYLES.map((s) => (
                         <SelectItem key={s} value={s}>
-                          {t(`barbecue:styles.${s}`)}
+                          <div className="flex flex-col">
+                            <span className="font-medium">{t(`barbecue:styles.${s}`)}</span>
+                            <span className="text-xs text-ink/60">
+                              {t(`barbecue:style_descriptions.${s}`)}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="mt-1 text-xs text-ink/60">
+                    {t(`barbecue:style_descriptions.${v.style}`)}
+                  </p>
                 </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="guests">{t('barbecue:fields.estimated_guests')}</Label>
+                    <Label htmlFor="adults">{t('barbecue:fields.adults_count')}</Label>
                     <Input
-                      id="guests"
+                      id="adults"
                       type="number"
                       min={1}
-                      {...form.register('estimated_guests')}
+                      value={v.adults_count}
+                      onChange={(e) =>
+                        handleAdultsChange(Math.max(1, Number(e.target.value) || 1))
+                      }
                     />
-                    <FieldError message={form.formState.errors.estimated_guests?.message} />
+                    <FieldError message={form.formState.errors.adults_count?.message} />
                   </div>
                   <div>
-                    <Label htmlFor="drinkers">Bebedores de álcool</Label>
+                    <Label htmlFor="children">{t('barbecue:fields.children_count')}</Label>
                     <Input
-                      id="drinkers"
+                      id="children"
                       type="number"
                       min={0}
-                      {...form.register('drinkers_count')}
+                      {...form.register('children_count')}
                     />
-                    <FieldError message={form.formState.errors.drinkers_count?.message} />
+                    <p className="mt-1 text-xs text-ink/55">
+                      {t('barbecue:fields_hints.children_count')}
+                    </p>
+                    <FieldError message={form.formState.errors.children_count?.message} />
                   </div>
                 </div>
+
                 <div>
-                  <Label htmlFor="duration">Duração estimada (horas)</Label>
+                  <Label htmlFor="drinkers">{t('barbecue:fields.drinkers_count')}</Label>
+                  <Input
+                    id="drinkers"
+                    type="number"
+                    min={0}
+                    max={v.adults_count}
+                    {...form.register('drinkers_count')}
+                  />
+                  <p className="mt-1 text-xs text-ink/55">
+                    {t('barbecue:fields_hints.drinkers_count')}
+                  </p>
+                  <FieldError message={form.formState.errors.drinkers_count?.message} />
+                </div>
+
+                <div>
+                  <Label htmlFor="duration">{t('barbecue:fields.duration_hours')}</Label>
                   <Input
                     id="duration"
                     type="number"
@@ -331,20 +397,28 @@ export function NewBarbecue() {
                   />
                   <FieldError message={form.formState.errors.duration_hours?.message} />
                 </div>
+
                 <div>
                   <Label>{t('barbecue:weight_profile.label')}</Label>
                   <RadioGroup
-                    className="mt-2 grid grid-cols-3 gap-2"
+                    className="mt-2 grid gap-2 sm:grid-cols-3"
                     value={v.weight_profile}
                     onValueChange={(p) => form.setValue('weight_profile', p as WeightProfile)}
                   >
                     {PROFILES.map((p) => (
                       <Label
                         key={p}
-                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
+                        className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
                       >
-                        <RadioGroupItem value={p} />
-                        <span>{t(`barbecue:weight_profile.${p}`)}</span>
+                        <RadioGroupItem value={p} className="mt-0.5" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {t(`barbecue:weight_profile.${p}`)}
+                          </span>
+                          <span className="text-xs text-ink/55">
+                            {t(`barbecue:weight_profile_descriptions.${p}`)}
+                          </span>
+                        </div>
                       </Label>
                     ))}
                   </RadioGroup>
@@ -383,11 +457,6 @@ export function NewBarbecue() {
                     message={form.formState.errors.cut_ids?.message}
                     className="mt-2"
                   />
-                  {!form.formState.errors.cut_ids && v.cut_ids.length === 0 && (
-                    <p className="mt-2 text-xs text-ink/55">
-                      Escolha pelo menos um corte para avançar.
-                    </p>
-                  )}
                 </div>
 
                 <div>
@@ -413,15 +482,32 @@ export function NewBarbecue() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between rounded-xl border border-ink/10 bg-cream-paper p-3">
-                  <div>
-                    <p className="font-medium">{t('barbecue:fields.include_sides')}</p>
-                    <p className="text-xs text-ink/60">Arroz, feijão, farofa, vinagrete…</p>
+                <div>
+                  <h3 className="font-display text-lg">{t('barbecue:fields.sides')}</h3>
+                  <p className="text-sm text-ink/60">
+                    Escolha quais acompanhamentos vão fazer parte. Crianças contam como meia
+                    porção.
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {SIDES.map((side) => {
+                      const checked = v.side_ids.includes(side.id);
+                      return (
+                        <Label
+                          key={side.id}
+                          className="flex cursor-pointer items-center gap-3 rounded-xl border border-ink/10 bg-cream-paper p-3 has-[:checked]:border-tomato has-[:checked]:bg-tomato/5"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleSide(side.id)}
+                          />
+                          <span className="flex-1">{side.name_pt}</span>
+                          <span className="text-stamp text-ink/50">
+                            {side.grams_per_person}g
+                          </span>
+                        </Label>
+                      );
+                    })}
                   </div>
-                  <Switch
-                    checked={v.include_sides}
-                    onCheckedChange={(c) => form.setValue('include_sides', !!c)}
-                  />
                 </div>
               </div>
             )}
@@ -437,12 +523,7 @@ export function NewBarbecue() {
         </Card>
 
         <div className="mt-6 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={back}
-            disabled={step === 0}
-            type="button"
-          >
+          <Button variant="ghost" onClick={back} disabled={step === 0} type="button">
             <ChevronLeft className="h-4 w-4" /> {t('common:actions.back')}
           </Button>
           {step < STEP_COUNT - 1 ? (
@@ -488,12 +569,15 @@ function ReviewStep({
     event_date: values.event_date || new Date().toISOString(),
     location: values.location ?? null,
     style: values.style,
-    estimated_guests: values.estimated_guests,
+    estimated_guests: values.adults_count + values.children_count,
     status: 'planning' as const,
-    include_sides: values.include_sides,
+    include_sides: values.side_ids.length > 0,
     notes: null,
     calc_params: {
       cut_ids: values.cut_ids,
+      side_ids: values.side_ids,
+      adults_count: values.adults_count,
+      children_count: values.children_count,
       drinkers_count: values.drinkers_count,
       duration_hours: values.duration_hours,
       weight_profile: values.weight_profile,
@@ -514,7 +598,9 @@ function ReviewStep({
       <div>
         <h3 className="font-display text-xl font-semibold">{values.title || 'Sem título'}</h3>
         <p className="text-sm text-ink/60">
-          {values.estimated_guests} pessoas · {values.duration_hours}h · {values.style}
+          {values.adults_count} adulto(s)
+          {values.children_count > 0 && ` + ${values.children_count} criança(s)`} · {values.duration_hours}h ·{' '}
+          {values.style}
         </p>
       </div>
 
@@ -528,9 +614,7 @@ function ReviewStep({
             return (
               <div key={m.cut_id} className="flex justify-between">
                 <span>{cut?.name_pt ?? m.cut_id}</span>
-                <span className="text-ink/65">
-                  {(m.total_grams / 1000).toFixed(2)} kg ({m.per_person_grams} g/pessoa)
-                </span>
+                <span className="text-ink/65">{formatGrams(m.total_grams)}</span>
               </div>
             );
           })}
@@ -562,7 +646,7 @@ function ReviewStep({
             {calc.sides.map((s) => (
               <div key={s.id} className="flex justify-between">
                 <span>{s.name_pt}</span>
-                <span className="text-ink/65">{(s.total_grams / 1000).toFixed(2)} kg</span>
+                <span className="text-ink/65">{formatGrams(s.total_grams)}</span>
               </div>
             ))}
           </CardContent>
