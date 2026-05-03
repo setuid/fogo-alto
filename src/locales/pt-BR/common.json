@@ -1,0 +1,24 @@
+{
+  "app_name": "Fogo Alto",
+  "tagline": "Bora caprichar no churrasco",
+  "actions": {
+    "create": "Criar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "duplicate": "Duplicar",
+    "share": "Compartilhar",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "back": "Voltar",
+    "next": "Próximo",
+    "finish": "Finalizar"
+  },
+  "language": "Idioma",
+  "language_pt": "Português (BR)",
+  "language_en": "English",
+  "loading": "Carregando…",
+  "error_generic": "Algo deu errado.",
+  "empty_state": "Nada por aqui ainda."
+}

@@ -1,0 +1,23 @@
+{
+  "title": "Kitchen mode",
+  "techniques": {
+    "grelha": "Grill",
+    "parrilla": "Parrilla",
+    "forno": "Oven",
+    "defumador": "Smoker",
+    "brasa_direta": "Direct heat",
+    "brasa_indireta": "Indirect heat"
+  },
+  "doneness": {
+    "mal_passado": "Rare",
+    "ao_ponto_para_mal": "Medium rare",
+    "ao_ponto": "Medium",
+    "ao_ponto_para_bem": "Medium well",
+    "bem_passado": "Well done"
+  },
+  "thickness_label": "Thickness (cm)",
+  "start_timer": "Start timer",
+  "stop_timer": "Stop",
+  "rest": "Rest",
+  "no_time_data": "No time data for this combination."
+}

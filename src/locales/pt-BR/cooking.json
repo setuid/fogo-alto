@@ -1,0 +1,23 @@
+{
+  "title": "Modo cozinha",
+  "techniques": {
+    "grelha": "Grelha",
+    "parrilla": "Parrilla",
+    "forno": "Forno",
+    "defumador": "Defumador",
+    "brasa_direta": "Brasa direta",
+    "brasa_indireta": "Brasa indireta"
+  },
+  "doneness": {
+    "mal_passado": "Mal passado",
+    "ao_ponto_para_mal": "Ao ponto pra mal",
+    "ao_ponto": "Ao ponto",
+    "ao_ponto_para_bem": "Ao ponto pra bem",
+    "bem_passado": "Bem passado"
+  },
+  "thickness_label": "Espessura (cm)",
+  "start_timer": "Iniciar timer",
+  "stop_timer": "Parar",
+  "rest": "Descansar",
+  "no_time_data": "Sem dado de tempo pra essa combinação."
+}

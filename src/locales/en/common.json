@@ -1,0 +1,24 @@
+{
+  "app_name": "Fogo Alto",
+  "tagline": "Make it count",
+  "actions": {
+    "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "duplicate": "Duplicate",
+    "share": "Share",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish"
+  },
+  "language": "Language",
+  "language_pt": "Português (BR)",
+  "language_en": "English",
+  "loading": "Loading…",
+  "error_generic": "Something went wrong.",
+  "empty_state": "Nothing here yet."
+}
