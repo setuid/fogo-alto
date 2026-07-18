@@ -72,7 +72,29 @@ export function GuestView() {
       setGuestToken(res.guest_token);
       toast.success(t('guest:saved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('common:error_generic'));
+      const msg = extractErrorMessage(err);
+      // Token guardado no localStorage ficou órfão (guest removido pelo host,
+      // churrasco recriado, etc.) — limpa e tenta de novo criando um novo guest.
+      if (guestToken && /invalid guest token/i.test(msg)) {
+        setGuestToken(null);
+        try {
+          const res = await upsert.mutateAsync({
+            share_token: shareToken,
+            guest_token: undefined,
+            name,
+            email: email || undefined,
+            rsvp_status: rsvp,
+            drinks_alcohol: drinksAlcohol,
+          });
+          setGuestToken(res.guest_token);
+          toast.success(t('guest:saved'));
+          return;
+        } catch (retryErr) {
+          toast.error(extractErrorMessage(retryErr) || t('common:error_generic'));
+          return;
+        }
+      }
+      toast.error(msg || t('common:error_generic'));
     }
   };
 
@@ -94,7 +116,13 @@ export function GuestView() {
       setQuantity('');
       toast.success('Oferta registrada.');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('common:error_generic'));
+      const msg = extractErrorMessage(err);
+      if (/invalid guest token/i.test(msg)) {
+        setGuestToken(null);
+        toast.error('Sua sessão de convidado expirou. Confirme presença de novo.');
+        return;
+      }
+      toast.error(msg || t('common:error_generic'));
     }
   };
 
@@ -307,6 +335,19 @@ export function GuestView() {
       </div>
     </>
   );
+}
+
+function extractErrorMessage(err: unknown): string {
+  if (!err) return '';
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object') {
+    const anyErr = err as { message?: unknown; hint?: unknown; details?: unknown };
+    if (typeof anyErr.message === 'string') return anyErr.message;
+    if (typeof anyErr.details === 'string') return anyErr.details;
+    if (typeof anyErr.hint === 'string') return anyErr.hint;
+  }
+  if (typeof err === 'string') return err;
+  return '';
 }
 
 function ErrorShell({ message }: { message: string }) {

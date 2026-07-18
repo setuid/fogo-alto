@@ -81,12 +81,12 @@ export function useUpsertRsvp() {
   return useMutation({
     mutationFn: async (input: RsvpInput): Promise<{ guest_token: string }> => {
       const { data, error } = await getSupabase().rpc('upsert_guest_rsvp', {
-        share_token: input.share_token,
-        guest_token: input.guest_token ?? null,
-        guest_name: input.name,
-        guest_email: input.email ?? null,
-        new_rsvp_status: input.rsvp_status,
-        drinks_alcohol_input: input.drinks_alcohol,
+        p_share_token: input.share_token,
+        p_guest_token: input.guest_token ?? null,
+        p_guest_name: input.name,
+        p_guest_email: input.email ?? null,
+        p_rsvp_status: input.rsvp_status,
+        p_drinks_alcohol: input.drinks_alcohol,
       });
       if (error) throw error;
       return data as unknown as { guest_token: string };
@@ -109,12 +109,12 @@ export function useAddContribution() {
   return useMutation({
     mutationFn: async (input: AddContributionInput) => {
       const { data, error } = await getSupabase().rpc('add_contribution', {
-        share_token: input.share_token,
-        guest_token: input.guest_token,
-        item_name_input: input.item_name,
-        category_input: input.category,
-        quantity_description_input: input.quantity_description ?? null,
-        notes_input: input.notes ?? null,
+        p_share_token: input.share_token,
+        p_guest_token: input.guest_token,
+        p_item_name: input.item_name,
+        p_category: input.category,
+        p_quantity_description: input.quantity_description ?? null,
+        p_notes: input.notes ?? null,
       });
       if (error) throw error;
       return data as unknown as { id: string };
@@ -128,9 +128,9 @@ export function useRemoveContribution() {
   return useMutation({
     mutationFn: async (input: { share_token: string; guest_token: string; contribution_id: string }) => {
       const { error } = await getSupabase().rpc('remove_contribution', {
-        share_token: input.share_token,
-        guest_token: input.guest_token,
-        contribution_id_input: input.contribution_id,
+        p_share_token: input.share_token,
+        p_guest_token: input.guest_token,
+        p_contribution_id: input.contribution_id,
       });
       if (error) throw error;
     },
